@@ -1,27 +1,97 @@
-# Chatbot Demo with vLLM Integration
+# Chatbot Wrapper Demo
 
-## Project Overview
-This repository contains a simple chatbot demo that uses vLLM as a thin wrapper, allowing switching between open-source models and API endpoints. The demo is designed for data collection on chatbot usage patterns and can be deployed locally or in containers on kubernetes clusters.
+A chatbot demo with vLLM integration that allows seamless switching between open-source models and API endpoints. Designed for data collection on chatbot usage patterns and can be deployed locally or in containers on Kubernetes clusters.
 
-## Development Plan with Claude Code CLI
+## Quick Start
 
-### Project Structure
-TODO: copy over comments from CLAUDE.md
+### Option 1: Using uv (recommended - faster)
+
+1. **Install uv:**
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Set up Python environment:**
+   ```bash
+   uv venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   uv pip install -r requirements.txt
+   ```
+
+### Option 2: Using traditional pip
+
+1. **Set up Python environment:**
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### Both options: Configure and run
+
+3. **Configure environment:**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your API keys and configuration
+   ```
+
+4. **Run the application:**
+   ```bash
+   uvicorn src.api.main:app --reload
+   ```
+
+## Project Structure
+
 ```
-chatbot-vllm-demo/
+chatbot-wrapper-demo/
 ├── src/
-│   ├── config/
-│   ├── models/
-│   ├── api/
-│   ├── web/
-│   └── utils/
-├── docker/
-├── k8s/
-├── scripts/
-├── tests/
-├── data/
-└── docs/
+│   ├── config/          # Configuration management for model switching
+│   ├── models/          # Model management and abstraction layer
+│   ├── api/             # FastAPI endpoints and request handling
+│   ├── web/             # Frontend chat interface
+│   └── utils/           # Shared utilities and helpers
+├── docker/              # Docker configurations
+├── k8s/                 # Kubernetes manifests
+├── scripts/             # Deployment and utility scripts
+├── tests/               # Test suites
+├── data/                # Data storage and exports
+└── docs/                # Additional documentation
 ```
+
+## Development
+
+### Testing
+```bash
+pytest                    # Run all tests
+pytest tests/unit/        # Run unit tests only
+pytest tests/integration/ # Run integration tests only
+```
+
+### Code Quality
+```bash
+black .                   # Format code
+isort .                   # Sort imports
+flake8 .                  # Lint code
+mypy src/                 # Type checking
+```
+
+### Docker
+```bash
+docker-compose up         # Start local development environment
+docker build -t chatbot-demo .  # Build application container
+```
+
+## Configuration
+
+The application supports both local vLLM models and external API endpoints. See `.env.example` for configuration options.
 
 ## Phase 1: Project Foundation
 **Claude Code Tasks:**
