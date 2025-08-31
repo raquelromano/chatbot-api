@@ -18,6 +18,13 @@ A chatbot demo with adapter-based architecture that provides a unified interface
    ```
 
 3. **Install dependencies:**
+   
+   For API-only (faster, recommended for testing):
+   ```bash
+   uv pip install -r requirements-api-only.txt
+   ```
+   
+   For full installation including vLLM (takes longer):
    ```bash
    uv pip install -r requirements.txt
    ```
@@ -31,6 +38,13 @@ A chatbot demo with adapter-based architecture that provides a unified interface
    ```
 
 2. **Install dependencies:**
+   
+   For API-only (faster, recommended for testing):
+   ```bash
+   pip install -r requirements-api-only.txt
+   ```
+   
+   For full installation including vLLM (takes longer):
    ```bash
    pip install -r requirements.txt
    ```
@@ -45,7 +59,15 @@ A chatbot demo with adapter-based architecture that provides a unified interface
 
 4. **Run the application:**
    ```bash
+   python run_server.py
+   # or
    uvicorn src.api.main:app --reload
+   ```
+
+5. **Test the API:**
+   ```bash
+   # In another terminal
+   python test_api.py
    ```
 
 ## Project Structure
@@ -103,6 +125,42 @@ docker build -t chatbot-demo .  # Build application container
 ## Configuration
 
 The application uses an adapter-based architecture where each model provider has its own adapter. See `.env.example` for configuration options including API keys and model selection.
+
+## API Endpoints
+
+The application provides OpenAI-compatible REST API endpoints:
+
+### Chat Completions
+- **POST** `/api/v1/chat/completions` - Create chat completions
+- **GET** `/api/v1/models` - List available models
+
+### Health & Status  
+- **GET** `/health/` - Comprehensive health check
+- **GET** `/health/ready` - Kubernetes readiness probe
+- **GET** `/health/live` - Kubernetes liveness probe
+
+### Documentation
+- **GET** `/docs` - Interactive API documentation (when debug=true)
+- **GET** `/` - Basic service information
+
+### Example Usage
+
+```bash
+# List available models
+curl http://localhost:8000/api/v1/models
+
+# Create a chat completion
+curl -X POST http://localhost:8000/api/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "model_id": "gpt-3.5-turbo",
+    "max_tokens": 150
+  }'
+
+# Health check
+curl http://localhost:8000/health/
+```
 
 ## Phase 1: Project Foundation ✅ COMPLETED
 **Completed Tasks:**
