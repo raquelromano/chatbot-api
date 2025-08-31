@@ -2,6 +2,7 @@
 
 import logging
 from contextlib import asynccontextmanager
+from datetime import datetime
 from typing import Dict, Any
 
 from fastapi import FastAPI, HTTPException, Request
@@ -72,7 +73,7 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all HTTP requests."""
-    start_time = request.state.start_time = structlog.processors.TimeStamper.now()
+    start_time = request.state.start_time = datetime.now()
     
     # Log request
     logger.info(
@@ -86,7 +87,7 @@ async def log_requests(request: Request, call_next):
         response = await call_next(request)
         
         # Log response
-        duration = (structlog.processors.TimeStamper.now() - start_time).total_seconds()
+        duration = (datetime.now() - start_time).total_seconds()
         logger.info(
             "Request completed",
             method=request.method,
@@ -99,7 +100,7 @@ async def log_requests(request: Request, call_next):
     
     except Exception as exc:
         # Log error
-        duration = (structlog.processors.TimeStamper.now() - start_time).total_seconds()
+        duration = (datetime.now() - start_time).total_seconds()
         logger.error(
             "Request failed",
             method=request.method,
