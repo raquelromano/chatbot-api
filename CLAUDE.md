@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a chatbot wrapper demo designed to integrate with vLLM, allowing easy switching between open-source models and API endpoints. The project is intended for data collection on chatbot usage patterns and can be deployed locally or in containers on a kubernetes cluster.
+This is a chatbot wrapper demo designed to provide a unified interface for multiple AI model providers through adapter-based architecture. The project supports local vLLM models, OpenAI API, and other OpenAI-compatible providers, with planned support for Anthropic and Google models. It's intended for data collection on chatbot usage patterns and can be deployed locally or in containers on a kubernetes cluster.
 
 ## Current Status
 
@@ -16,8 +16,14 @@ This is a chatbot wrapper demo designed to integrate with vLLM, allowing easy sw
 - ✅ Environment configuration (.env.example, .gitignore)
 - ✅ Updated README.md with setup instructions (including uv support)
 
-**Next Phase: Phase 2 - vLLM Wrapper Service**
-Ready to implement core model management and API abstraction layer.
+**Phase 2 - Core Model Adapters: ✅ COMPLETED**
+- ✅ OpenAI adapter implementation supporting OpenAI API, local vLLM models, and OpenAI-compatible providers
+- ✅ Model registry system for dynamic model configuration
+- ✅ Settings management with environment variable support
+- ✅ Unified chat completion interface across different model backends
+
+**Next Phase: Phase 3 - Additional Model Providers**
+Ready to implement Anthropic and Google model adapters.
 
 ## Planned Architecture
 
@@ -73,10 +79,12 @@ chatbot-wrapper-demo/
 
 ## Key Implementation Considerations
 
-### Model Management
-- The `ModelManager` class should handle lifecycle of both local vLLM models and API clients
-- Configuration should support easy switching between different model backends
-- Implement fallback mechanisms for API failures
+### Model Adapter Architecture
+- **OpenAI Adapter**: Unified interface supporting OpenAI API, local vLLM models, and OpenAI-compatible providers
+- **Anthropic Adapter** (planned): Direct integration with Claude models via Anthropic API
+- **Google Adapter** (planned): Integration with Gemini models via Google AI API
+- **Model Registry**: Dynamic model configuration and provider switching
+- **Fallback Mechanisms**: Automatic failover between model providers for reliability
 
 ### Data Collection
 - Structure logging for conversation analytics
@@ -90,10 +98,11 @@ chatbot-wrapper-demo/
 
 ## Configuration Strategy
 
-The application should support:
-- Local vLLM models (Llama, Mistral, etc.)
-- External API integration (OpenAI, Anthropic, others)
-- Environment-specific deployment configurations
+The application supports multiple model providers through adapters:
+- **OpenAI Adapter**: OpenAI API, local vLLM models, and OpenAI-compatible endpoints
+- **Anthropic Adapter** (planned): Claude models via Anthropic API
+- **Google Adapter** (planned): Gemini models via Google AI API
+- Environment-specific deployment configurations with provider-specific settings
 
 ## Security Considerations
 
@@ -102,21 +111,38 @@ The application should support:
 - Implement proper authentication for data collection endpoints
 - Sanitize and anonymize collected data appropriately
 
-## Next Steps (Phase 2 Implementation)
+## Next Steps (Phase 3 Implementation)
 
-1. **Create configuration system** (`src/config/`):
-   - Settings class with Pydantic for environment variables
-   - Model configuration management
-   - API client configuration
+1. **Implement Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`):
+   - Direct integration with Anthropic API
+   - Claude model support with proper message formatting
+   - Streaming and non-streaming completion support
 
-2. **Implement model management** (`src/models/`):
-   - `ModelManager` class for model lifecycle
-   - `BaseModel` abstract class for model interfaces
-   - `VLLMModel` and `APIModel` concrete implementations
+2. **Implement Google Adapter** (`src/models/adapters/google_adapter.py`):
+   - Integration with Google AI API (Gemini models)
+   - Proper content formatting for Google's API structure
+   - Multi-modal support for text and image inputs
 
-3. **Build API abstraction** (`src/utils/`):
-   - HTTP client utilities for external APIs
-   - Request/response standardization
-   - Error handling and retry mechanisms
+3. **Enhance Model Registry**:
+   - Add Anthropic and Google model configurations
+   - Implement provider-specific parameter mapping
+   - Add model capability detection (streaming, multi-modal, etc.)
 
-Ready to begin Phase 2 implementation with the foundation in place.
+4. **Build API Endpoints** (`src/api/`):
+   - FastAPI endpoints for chat completions
+   - Provider selection and model switching
+   - Request logging and analytics collection
+
+## Current Implementation Status
+
+### Completed Components
+- ✅ **OpenAI Adapter** (`src/models/adapters/openai_adapter.py`)
+- ✅ **Model Registry** (`src/models/registry.py`)
+- ✅ **Settings Management** (`src/config/settings.py`)
+- ✅ **Environment Configuration** (`.env.example`)
+
+### Architecture Decisions Made
+- **Adapter Pattern**: Each model provider has its own adapter implementing a common interface
+- **OpenAI Compatibility**: Local vLLM models use OpenAI-compatible endpoints for consistency
+- **Unified Response Format**: All adapters return standardized chat completion responses
+- **Environment-Based Configuration**: Model selection and API keys managed via environment variables

@@ -1,6 +1,6 @@
 # Chatbot Wrapper Demo
 
-A chatbot demo with vLLM integration that allows seamless switching between open-source models and API endpoints. Designed for data collection on chatbot usage patterns and can be deployed locally or in containers on Kubernetes clusters.
+A chatbot demo with adapter-based architecture that provides a unified interface for multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers, with planned support for Anthropic and Google models. Designed for data collection on chatbot usage patterns and can be deployed locally or in containers on Kubernetes clusters.
 
 ## Quick Start
 
@@ -89,37 +89,61 @@ docker-compose up         # Start local development environment
 docker build -t chatbot-demo .  # Build application container
 ```
 
+## Model Providers
+
+### Currently Supported
+- **OpenAI API**: Direct integration with OpenAI models (GPT-3.5, GPT-4, etc.)
+- **Local vLLM Models**: Local deployment of open-source models (Llama, Mistral, etc.) via vLLM's OpenAI-compatible server
+- **OpenAI-Compatible Providers**: Any provider that implements OpenAI-compatible endpoints
+
+### Planned Support
+- **Anthropic**: Claude models via Anthropic API
+- **Google**: Gemini models via Google AI API
+
 ## Configuration
 
-The application supports both local vLLM models and external API endpoints. See `.env.example` for configuration options.
+The application uses an adapter-based architecture where each model provider has its own adapter. See `.env.example` for configuration options including API keys and model selection.
 
-## Phase 1: Project Foundation
-**Claude Code Tasks:**
-- Initialize Python project with proper structure
-- Set up virtual environment and dependency management
-- Create base configuration system for model switching
-- Generate requirements.txt and pyproject.toml
+## Phase 1: Project Foundation ✅ COMPLETED
+**Completed Tasks:**
+- ✅ Initialize Python project with proper structure
+- ✅ Set up virtual environment and dependency management
+- ✅ Create base configuration system for model switching
+- ✅ Generate requirements.txt and pyproject.toml
 
 **Key Components:**
 - Configuration management for different model types
 - Environment variable handling
 - Basic project scaffolding
 
-## Phase 2: vLLM Wrapper Service
-**Claude Code Tasks:**
-- Implement thin abstraction layer for vLLM integration
-- Create model loading/unloading utilities
-- Build API client handlers for external services
-- Add connection pooling and error handling
+## Phase 2: Core Model Adapters ✅ COMPLETED
+**Completed Tasks:**
+- ✅ Implement OpenAI adapter supporting multiple backends
+- ✅ Create model registry for dynamic model configuration
+- ✅ Build unified chat completion interface
+- ✅ Add environment-based settings management
 
 **Key Components:**
-- `ModelManager` class for model lifecycle
-- `APIClient` for external API calls
-- Request/response standardization
-- Fallback and retry mechanisms
+- `OpenAIAdapter` class supporting OpenAI API, vLLM, and compatible providers
+- `ModelRegistry` for model configuration management
+- Standardized chat completion responses
+- Settings management with Pydantic
 
-## Phase 3: Chatbot Interface
-**Claude Code Tasks:**
+## Phase 3: Additional Model Providers (Next Phase)
+**Upcoming Tasks:**
+- Implement Anthropic adapter for Claude models
+- Create Google adapter for Gemini models  
+- Enhance model registry with provider-specific configurations
+- Add model capability detection (streaming, multi-modal, etc.)
+
+**Key Components:**
+- `AnthropicAdapter` class for Claude model integration
+- `GoogleAdapter` class for Gemini model support
+- Extended model registry with provider-specific parameters
+- Multi-modal support for text and image inputs
+
+## Phase 4: API Endpoints & Chat Interface
+**Planned Tasks:**
 - Generate FastAPI application structure
 - Create REST endpoints for chat interactions
 - Build simple web frontend (HTML/CSS/JS)
@@ -131,8 +155,8 @@ The application supports both local vLLM models and external API endpoints. See 
 - Session persistence and conversation history
 - WebSocket support for real-time chat (optional)
 
-## Phase 4: Data Collection System
-**Claude Code Tasks:**
+## Phase 5: Data Collection System
+**Planned Tasks:**
 - Design logging schema for conversation data
 - Implement metrics collection (response times, model performance)
 - Create data export utilities
@@ -144,8 +168,8 @@ The application supports both local vLLM models and external API endpoints. See 
 - Analytics dashboard endpoints
 - Data anonymization utilities
 
-## Phase 5: Containerization & Deployment
-**Claude Code Tasks:**
+## Phase 6: Containerization & Deployment
+**Planned Tasks:**
 - Generate Dockerfile for the application
 - Create docker-compose for local development
 - Build Kubernetes manifests for AWS deployment
@@ -160,9 +184,10 @@ The application supports both local vLLM models and external API endpoints. See 
 ## Configuration Strategy
 
 ### Model Configuration
-- Support for local vLLM models (Llama, Mistral, etc.)
-- API integration (OpenAI, Anthropic, others)
-- Model-specific parameters (temperature, max_tokens, etc.)
+- **OpenAI Adapter**: Support for OpenAI API, local vLLM models, and OpenAI-compatible providers
+- **Anthropic Adapter** (planned): Direct Claude model integration
+- **Google Adapter** (planned): Gemini model support
+- Model-specific parameters (temperature, max_tokens, etc.) mapped per provider
 
 ### Deployment Configurations
 - **Local Development**: Docker Compose with vLLM server
