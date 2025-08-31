@@ -63,9 +63,9 @@ data/*.csv
 data/conversations/
 
 # Model files
-models/
-*.bin
-*.safetensors
+#models/
+#*.bin
+#*.safetensors
 
 # Docker
 .dockerignore
