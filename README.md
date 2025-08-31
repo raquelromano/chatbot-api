@@ -129,8 +129,22 @@ The application uses an adapter-based architecture where each model provider has
 - Standardized chat completion responses
 - Settings management with Pydantic
 
-## Phase 3: Additional Model Providers (Next Phase)
-**Upcoming Tasks:**
+## Phase 3: API Endpoints & Chat Interface (Current Phase)
+**Current Tasks:**
+- Generate FastAPI application structure
+- Create REST endpoints for chat interactions using existing OpenAI adapter
+- Add health check and status endpoints
+- Implement request/response models with Pydantic validation
+- Add error handling and logging middleware
+
+**Key Components:**
+- FastAPI server with chat endpoints
+- Request/response models for chat completions
+- Health monitoring and status endpoints
+- Middleware for logging and error handling
+
+## Phase 4: Additional Model Providers (Future)
+**Future Tasks:**
 - Implement Anthropic adapter for Claude models
 - Create Google adapter for Gemini models  
 - Enhance model registry with provider-specific configurations
@@ -141,19 +155,6 @@ The application uses an adapter-based architecture where each model provider has
 - `GoogleAdapter` class for Gemini model support
 - Extended model registry with provider-specific parameters
 - Multi-modal support for text and image inputs
-
-## Phase 4: API Endpoints & Chat Interface
-**Planned Tasks:**
-- Generate FastAPI application structure
-- Create REST endpoints for chat interactions
-- Build simple web frontend (HTML/CSS/JS)
-- Implement session management
-
-**Key Components:**
-- FastAPI server with chat endpoints
-- Basic web UI for chat interface
-- Session persistence and conversation history
-- WebSocket support for real-time chat (optional)
 
 ## Phase 5: Data Collection System
 **Planned Tasks:**

@@ -22,8 +22,8 @@ This is a chatbot wrapper demo designed to provide a unified interface for multi
 - ✅ Settings management with environment variable support
 - ✅ Unified chat completion interface across different model backends
 
-**Next Phase: Phase 3 - Additional Model Providers**
-Ready to implement Anthropic and Google model adapters.
+**Next Phase: Phase 3 - API Endpoints & Chat Interface**
+Ready to implement FastAPI endpoints using the existing OpenAI adapter.
 
 ## Planned Architecture
 
@@ -113,25 +113,17 @@ The application supports multiple model providers through adapters:
 
 ## Next Steps (Phase 3 Implementation)
 
-1. **Implement Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`):
-   - Direct integration with Anthropic API
-   - Claude model support with proper message formatting
-   - Streaming and non-streaming completion support
+1. **Build API Endpoints** (`src/api/`):
+   - FastAPI application structure with main app file
+   - Chat completion endpoints using existing OpenAI adapter
+   - Health check and status endpoints
+   - Request/response models with Pydantic validation
+   - Error handling and logging middleware
 
-2. **Implement Google Adapter** (`src/models/adapters/google_adapter.py`):
-   - Integration with Google AI API (Gemini models)
-   - Proper content formatting for Google's API structure
-   - Multi-modal support for text and image inputs
-
-3. **Enhance Model Registry**:
-   - Add Anthropic and Google model configurations
-   - Implement provider-specific parameter mapping
-   - Add model capability detection (streaming, multi-modal, etc.)
-
-4. **Build API Endpoints** (`src/api/`):
-   - FastAPI endpoints for chat completions
-   - Provider selection and model switching
-   - Request logging and analytics collection
+2. **Future Model Providers** (Phase 4+):
+   - **Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`): Claude model integration
+   - **Google Adapter** (`src/models/adapters/google_adapter.py`): Gemini model support
+   - **Enhanced Model Registry**: Provider-specific configurations and capability detection
 
 ## Current Implementation Status
 
