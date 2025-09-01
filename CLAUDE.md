@@ -34,8 +34,15 @@ This is a chatbot wrapper demo designed to provide a unified interface for multi
 - ✅ Model listing endpoint
 - ✅ Installation and testing infrastructure
 
-**Next Phase: Phase 4 - Authentication System**
-Ready to implement Auth0-based authentication for educational SSO support.
+**Phase 4 - Authentication System: 🚧 IN PROGRESS**
+- ✅ Auth0 configuration settings added to settings.py
+- ✅ Authentication models created (src/auth/models.py)
+- ✅ Auth module structure established (src/auth/)
+- 🚧 Auth0 client implementation (in progress)
+- ⏳ JWT middleware for token validation
+- ⏳ Authentication API endpoints with onboarding flow
+- ⏳ User management system with role storage
+- ⏳ Integration with main FastAPI application
 
 ## Planned Architecture
 
@@ -127,33 +134,15 @@ The application supports multiple model providers through adapters:
 
 **Phase 4 - Multi-Provider Educational SSO**
 
-### Implementation Plan: Auth0-Based Universal SSO
+### Overall Vision: Auth0-Based Universal SSO
 
-**Approach**: Use Auth0 as a universal authentication hub to support multiple educational identity providers without vendor lock-in.
-
-**Supported Authentication Methods**:
-- **Google Workspace**: Most common for educational institutions
-- **Microsoft Azure AD/Office 365**: Enterprise and education accounts
-- **SAML**: Custom enterprise SSO systems used by schools
-- **Custom OIDC**: Any OpenID Connect-compatible provider
-- **Social Login Fallback**: Direct Google/GitHub for individual users
+**Long-term Approach**: Use Auth0 as a universal authentication hub to support multiple educational identity providers without vendor lock-in.
 
 **Vendor Lock-in Avoidance Strategy**:
 - **Standards-Based**: Uses OIDC/OAuth2 and JWT tokens (industry standards)
 - **Provider Agnostic**: Backend only validates JWT tokens, not provider-specific
 - **Portable Implementation**: Standard protocols work with any auth provider
 - **Migration Path**: User data exports and standard token format enable easy migration
-
-**Technical Implementation**:
-```python
-# Backend validates standard JWT tokens from any provider
-# Provider-specific logic confined to configuration
-auth_config = {
-    "google": {"provider": "auth0", "connection": "google-oauth2"},
-    "microsoft": {"provider": "auth0", "connection": "windowslive"},
-    "saml_custom": {"provider": "auth0", "connection": "saml-institution"}
-}
-```
 
 **Benefits for Educational Use Case**:
 - **Universal Compatibility**: Works with virtually any school's existing SSO system
@@ -162,12 +151,70 @@ auth_config = {
 - **Standards Compliance**: FERPA and educational privacy requirements support
 - **Cost Effective**: Education discounts and free tiers available
 
-**Implementation Components**:
-- **Auth Endpoints** (`src/api/routes/auth.py`): Login, logout, token refresh, user info
-- **JWT Middleware** (`src/api/middleware/auth.py`): Token validation and user context
-- **Auth Models** (`src/api/models/auth.py`): User, session, and auth request models
-- **Auth0 Integration** (`src/auth/auth0_client.py`): Provider-specific client logic
-- **User Management** (`src/models/user.py`): User data and session management
+### Current Implementation: Simplified Pilot Approach
+
+For the initial 6-month pilot with a small number of known partner institutions (<5), we've implemented a simplified authentication strategy that balances functionality with development speed.
+
+**Current Simplified Approach**:
+1. **Institution Registry**: Manually curated list of partner institutions with metadata
+2. **User Onboarding Flow**: One-time role selection for missing/ambiguous data  
+3. **Individual User Support**: Non-institutional users can also authenticate
+4. **Auth0 Integration**: Standard OAuth2/OIDC flows for authentication
+
+**Institution Registry Structure**:
+```python
+# Example institution configuration structure
+KNOWN_INSTITUTIONS = {
+    "example.edu": InstitutionConfig(
+        institution_id="example",               # Unique identifier for database
+        name="Example University",              # Display name for UI
+        domain="example.edu",                   # Email domain for auto-detection
+        auth_provider=AuthProvider.GOOGLE,      # Preferred SSO provider (Google/Microsoft/SAML)
+        saml_config={...},                     # SAML configuration if applicable
+        oidc_config={...},                     # OIDC configuration if applicable  
+        logo_url="https://example.edu/logo",   # Institution branding for UI
+        primary_color="#003366",               # Institution brand color
+        enabled=True                           # Whether institution is currently active
+    )
+}
+```
+
+**Authentication Flow**:
+1. User initiates login via Auth0 (Google, Microsoft, GitHub, or SAML)
+2. System extracts email domain and checks institution registry
+3. If institutional email detected: suggest institution and default role
+4. If not detected or individual: user selects "Individual" + role  
+5. Store institution_id and role in user database
+6. Include in application JWT claims for authorization
+
+**Current Implementation Status**:
+- ✅ **Auth Models** (`src/auth/models.py`): Complete data structures for users, sessions, institutions
+- ✅ **Settings Integration**: Auth0 configuration variables in settings.py
+- 🚧 **Auth0 Client** (`src/auth/auth0_client.py`): OAuth flows + institution registry lookup
+- ⏳ **JWT Middleware**: Token validation and user context injection
+- ⏳ **Auth Endpoints**: Login, callback, onboarding, user management APIs
+- ⏳ **User Storage**: Database models and session management
+- ⏳ **Frontend Integration**: Auth middleware integration with FastAPI app
+
+**Supported Authentication Methods**:
+- **Google Workspace**: Most common for educational institutions
+- **Microsoft Azure AD/Office 365**: Enterprise and education accounts  
+- **SAML**: Custom enterprise SSO systems used by schools
+- **GitHub**: Individual developer accounts
+- **Individual**: Non-institutional users with manual role selection
+
+**Benefits of Simplified Approach**:
+- **Low Maintenance**: Manual registry manageable for small number of institutions
+- **User Friendly**: Clear role selection, works for both institutional and individual users
+- **Scalable**: Easy to add SAML attributes or Auth0 custom claims later
+- **Standards-Based**: Uses OAuth2/OIDC, preserves migration path to full implementation
+
+**Implementation Components** (Current and Planned):
+- **Auth Models** (`src/auth/models.py`): User, session, and institution data structures
+- **Auth0 Client** (`src/auth/auth0_client.py`): Provider-specific OAuth logic + institution lookup
+- **JWT Middleware** (`src/auth/middleware.py`): Token validation and user context
+- **Auth Endpoints** (`src/api/routes/auth.py`): Login, logout, onboarding, user info
+- **User Management**: Database models and session storage
 
 ## Next Steps (Phase 5+ Implementation)
 

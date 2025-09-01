@@ -21,6 +21,19 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
     
+    # Auth0 configuration
+    auth0_domain: Optional[str] = Field(default=None, env="AUTH0_DOMAIN")
+    auth0_client_id: Optional[str] = Field(default=None, env="AUTH0_CLIENT_ID")
+    auth0_client_secret: Optional[str] = Field(default=None, env="AUTH0_CLIENT_SECRET")
+    auth0_audience: Optional[str] = Field(default=None, env="AUTH0_AUDIENCE")
+    jwt_secret_key: str = Field(default="development-key-change-in-production", env="JWT_SECRET_KEY")
+    jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
+    jwt_expiration_hours: int = Field(default=24, env="JWT_EXPIRATION_HOURS")
+    
+    # Authentication settings
+    enable_auth: bool = Field(default=False, env="ENABLE_AUTH")
+    auth_required_endpoints: List[str] = Field(default_factory=lambda: ["/v1/chat/completions"], env="AUTH_REQUIRED_ENDPOINTS")
+    
     # Data collection settings
     enable_logging: bool = Field(default=True, env="ENABLE_LOGGING")
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
