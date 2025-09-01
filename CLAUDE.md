@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a chatbot wrapper demo designed to provide a unified interface for multiple AI model providers through adapter-based architecture. The project supports local vLLM models, OpenAI API, and other OpenAI-compatible providers, with planned support for Anthropic and Google models. It's intended for data collection on chatbot usage patterns and can be deployed locally or in containers on a kubernetes cluster.
 
+**Note**: This is the backend API service. The frontend UI is developed separately in `../chatbot-frontend`. Cloud infrastructure is being developed in `../augmented-infra`.
+
 ## Current Status
 
 **Phase 1 - Project Foundation: ✅ COMPLETED**
@@ -218,34 +220,32 @@ KNOWN_INSTITUTIONS = {
 
 ## Next Steps (Phase 5+ Implementation)
 
-1. **Authentication System** (Phase 4 - Immediate):
-   - Auth0 integration with multi-provider SSO support
-   - JWT-based session management
-   - User context and authorization middleware
-   - Educational institution onboarding workflow
+1. **Containerization & Deployment** (Phase 5 - Next Priority):
+   - **Docker Implementation**: Create Dockerfile and docker-compose for containerized deployment
+   - **Container Optimization**: Multi-stage builds, dependency caching, security hardening
+   - **Environment Configuration**: Container-specific environment variable handling
+   - **Health Checks**: Docker and Kubernetes health probe configuration
+   - **Cloud Integration**: Integration with infrastructure in `../augmented-infra`
+   - **CI/CD Pipeline**: Automated testing, building, and deployment workflows
 
-2. **Additional Model Providers** (Phase 5):
+2. **Database Integration** (Phase 6):
+   - **SQLite Implementation**: Replace in-memory user storage with persistent SQLite database
+   - **Database Schema**: User profiles, sessions, chat history, and analytics tables
+   - **Migration System**: Database versioning and upgrade scripts
+   - **Analytics Queries**: SQL queries for user behavior analysis and reporting
+   - **Data Export**: Backup and analysis data export capabilities
+   - **Container Persistence**: Database file persistence in containerized environments
+
+3. **Additional Model Providers** (Phase 7):
    - **Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`): Claude model integration
    - **Google Adapter** (`src/models/adapters/google_adapter.py`): Gemini model support
    - **Enhanced Model Registry**: Provider-specific configurations and capability detection
 
-3. **Data Collection System** (Phase 6):
-   - Conversation logging and analytics with user attribution
-   - Database integration for data persistence
-   - Export utilities and data analysis tools
-   - Privacy controls and data retention policies (FERPA compliance)
-
-4. **Web Interface** (Phase 7):
-   - Simple chat interface using FastAPI static files or separate frontend
-   - WebSocket support for real-time streaming
-   - Session management and conversation history
-   - User authentication and profile management
-
-5. **Deployment & Production** (Phase 8):
-   - Docker containers and docker-compose setup
-   - Kubernetes manifests for cloud deployment
-   - CI/CD pipeline and automated testing
-   - Monitoring and observability setup
+4. **Enhanced Data Collection System** (Phase 8):
+   - **Conversation Analytics**: Track usage patterns, model performance, user engagement
+   - **Real-time Metrics**: API response times, error rates, user activity dashboards
+   - **Data Analysis Tools**: Built-in analytics endpoints for team insights
+   - **Privacy Controls**: FERPA compliance, data retention policies, user data deletion
 
 ## Current Implementation Status
 
@@ -253,11 +253,16 @@ KNOWN_INSTITUTIONS = {
 - ✅ **OpenAI Adapter** (`src/models/openai_adapter.py`): Supports OpenAI API, vLLM, and compatible providers
 - ✅ **Model Configuration** (`src/config/models.py`): Centralized model registry with Pydantic validation
 - ✅ **Adapter Factory** (`src/models/adapter_factory.py`): Runtime adapter management and health checks
-- ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration
+- ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration with Auth0 support
 - ✅ **FastAPI Application** (`src/api/main.py`): Complete web server with middleware and error handling
-- ✅ **API Routes** (`src/api/routes/`): Chat completions, health checks, and model listing
+- ✅ **API Routes** (`src/api/routes/`): Chat completions, health checks, model listing, and authentication
 - ✅ **API Models** (`src/api/models.py`): OpenAI-compatible request/response models
 - ✅ **Base Interfaces** (`src/models/base.py`): Abstract adapter interface and common models
+- ✅ **Authentication System** (`src/auth/`): Complete Auth0 integration with JWT middleware
+  - ✅ **Auth0 Client** (`src/auth/auth0_client.py`): OAuth flows and institution registry
+  - ✅ **JWT Middleware** (`src/auth/middleware.py`): Token validation and user context
+  - ✅ **Auth Endpoints** (`src/auth/auth.py`): Login, callback, onboarding, profile management
+  - ✅ **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
 - ✅ **Testing Infrastructure** (`test_api.py`, `run_server.py`): Development and testing tools
 - ✅ **Installation Setup** (`requirements-api-only.txt`): Lightweight dependency management
 

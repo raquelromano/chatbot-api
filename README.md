@@ -2,6 +2,8 @@
 
 A chatbot demo with adapter-based architecture that provides a unified interface for multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers, with planned support for Anthropic and Google models. Designed for data collection on chatbot usage patterns and can be deployed locally or in containers on Kubernetes clusters.
 
+**Note**: This is the backend API service. The frontend UI is developed separately in `../chatbot-frontend`.
+
 ## Quick Start
 
 ### Option 1: Using uv (recommended - faster)
@@ -124,15 +126,147 @@ docker build -t chatbot-demo .  # Build application container
 
 ## Configuration
 
-The application uses an adapter-based architecture where each model provider has its own adapter. See `.env.example` for configuration options including API keys and model selection.
+The application uses environment variables for configuration. Copy `.env.example` to `.env` and configure the following settings:
+
+### Required Environment Variables
+
+#### Basic Application Settings
+```bash
+APP_NAME=Chatbot Wrapper Demo      # Application display name
+DEBUG=false                        # Enable debug mode and API docs
+HOST=0.0.0.0                      # Server host binding
+PORT=8000                         # Server port
+```
+
+#### Model Configuration
+```bash
+DEFAULT_MODEL=local               # Default model to use (local/openai/anthropic)
+VLLM_HOST=localhost              # vLLM server host for local models
+VLLM_PORT=8001                   # vLLM server port for local models
+```
+
+#### API Keys for External Model Providers
+```bash
+# OpenAI API (required for OpenAI models)
+OPENAI_API_KEY=your_openai_key_here
+
+# Anthropic API (required for Claude models - planned)
+ANTHROPIC_API_KEY=your_anthropic_key_here
+```
+
+### Authentication Configuration
+
+#### Auth0 Setup (Required for Authentication)
+```bash
+# Enable/disable authentication system
+ENABLE_AUTH=false                 # Set to 'true' to enable authentication
+
+# Auth0 Configuration (required when ENABLE_AUTH=true)
+AUTH0_DOMAIN=your-tenant.auth0.com              # Your Auth0 domain
+AUTH0_CLIENT_ID=your_auth0_client_id            # Auth0 application client ID
+AUTH0_CLIENT_SECRET=your_auth0_client_secret    # Auth0 application client secret
+AUTH0_AUDIENCE=https://your-api-identifier      # Auth0 API identifier (optional)
+
+# JWT Token Configuration
+JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production  # JWT signing key
+JWT_ALGORITHM=HS256                             # JWT algorithm (HS256 recommended)
+JWT_EXPIRATION_HOURS=24                         # Token expiration time
+
+# Protected Endpoints
+AUTH_REQUIRED_ENDPOINTS=["/v1/chat/completions"] # Comma-separated list of protected endpoints
+```
+
+#### Auth0 Application Setup
+
+To use authentication, you need to configure an Auth0 application:
+
+1. **Create Auth0 Account**: Sign up at [auth0.com](https://auth0.com)
+
+2. **Create Application**:
+   - Go to Applications > Create Application
+   - Choose "Regular Web Applications"
+   - Note the Domain, Client ID, and Client Secret
+
+3. **Configure Application**:
+   - **Allowed Callback URLs**: `http://localhost:8000/auth/callback`
+   - **Allowed Logout URLs**: `http://localhost:8000/`
+   - **Allowed Web Origins**: `http://localhost:8000`
+
+4. **Enable Social Connections** (optional):
+   - Go to Authentication > Social
+   - Enable Google, Microsoft, GitHub as needed
+   - Configure with your OAuth apps
+
+5. **Create API** (optional but recommended):
+   - Go to Applications > APIs > Create API
+   - Set identifier (e.g., `https://chatbot-api`)
+   - Use this as AUTH0_AUDIENCE
+
+### Data Collection & Logging
+```bash
+ENABLE_LOGGING=true              # Enable structured logging
+LOG_LEVEL=INFO                   # Log level (DEBUG/INFO/WARNING/ERROR)
+DATA_RETENTION_DAYS=30           # Data retention period
+```
+
+### Example Complete .env File
+```bash
+# Application Configuration
+APP_NAME=Chatbot Wrapper Demo
+DEBUG=true
+HOST=0.0.0.0
+PORT=8000
+
+# Model Configuration
+DEFAULT_MODEL=local
+VLLM_HOST=localhost
+VLLM_PORT=8001
+
+# API Keys (uncomment and configure as needed)
+# OPENAI_API_KEY=sk-your-openai-key-here
+# ANTHROPIC_API_KEY=your-anthropic-key-here
+
+# Authentication Configuration
+ENABLE_AUTH=true
+AUTH0_DOMAIN=myapp.us.auth0.com
+AUTH0_CLIENT_ID=abc123def456
+AUTH0_CLIENT_SECRET=supersecret123
+AUTH0_AUDIENCE=https://chatbot-api
+JWT_SECRET_KEY=change-this-in-production-use-long-random-string
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
+AUTH_REQUIRED_ENDPOINTS=["/v1/chat/completions"]
+
+# Data Collection
+ENABLE_LOGGING=true
+LOG_LEVEL=INFO
+DATA_RETENTION_DAYS=30
+```
+
+### Configuration Validation
+
+The application will validate configuration on startup:
+- ✅ **Without Authentication**: Only model configuration is required
+- ✅ **With Authentication**: Auth0 credentials must be provided when `ENABLE_AUTH=true`
+- ⚠️ **Missing API Keys**: External model providers require their respective API keys
 
 ## API Endpoints
 
 The application provides OpenAI-compatible REST API endpoints:
 
 ### Chat Completions
-- **POST** `/api/v1/chat/completions` - Create chat completions
-- **GET** `/api/v1/models` - List available models
+- **POST** `/v1/chat/completions` - Create chat completions (⚠️ requires authentication when enabled)
+- **GET** `/v1/models` - List available models
+
+### Authentication (when enabled)
+- **GET** `/auth/login` - Initiate OAuth login flow
+- **GET** `/auth/callback` - Handle OAuth callback from Auth0
+- **POST** `/auth/onboarding` - Complete user role selection
+- **GET** `/auth/profile` - Get current user profile (requires auth)
+- **POST** `/auth/refresh` - Refresh access token (requires auth)
+- **POST** `/auth/logout` - Logout and invalidate tokens (requires auth)
+- **GET** `/auth/institutions` - List available educational institutions
+- **GET** `/auth/status` - Authentication service status
 
 ### Health & Status  
 - **GET** `/health/` - Comprehensive health check
@@ -145,12 +279,13 @@ The application provides OpenAI-compatible REST API endpoints:
 
 ### Example Usage
 
+#### Without Authentication
 ```bash
 # List available models
-curl http://localhost:8000/api/v1/models
+curl http://localhost:8000/v1/models
 
-# Create a chat completion
-curl -X POST http://localhost:8000/api/v1/chat/completions \
+# Create a chat completion (when ENABLE_AUTH=false)
+curl -X POST http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "messages": [{"role": "user", "content": "Hello!"}],
@@ -160,6 +295,29 @@ curl -X POST http://localhost:8000/api/v1/chat/completions \
 
 # Health check
 curl http://localhost:8000/health/
+```
+
+#### With Authentication
+```bash
+# Check auth status
+curl http://localhost:8000/auth/status
+
+# Get login URL (redirect user to this URL)
+curl "http://localhost:8000/auth/login?redirect_uri=http://localhost:8000/auth/callback"
+
+# Create authenticated chat completion (after getting JWT token)
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{
+    "messages": [{"role": "user", "content": "Hello!"}],
+    "model_id": "gpt-3.5-turbo",
+    "max_tokens": 150
+  }'
+
+# Get user profile
+curl http://localhost:8000/auth/profile \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
 ## Phase 1: Project Foundation ✅ COMPLETED
@@ -201,16 +359,16 @@ curl http://localhost:8000/health/
 - Health monitoring and status endpoints
 - Middleware for logging and error handling
 
-## Phase 4: Authentication System 🚧 IN PROGRESS
-**Current Tasks:**
+## Phase 4: Authentication System ✅ COMPLETED
+**Completed Tasks:**
 - ✅ Auth0 configuration settings and environment variables
 - ✅ Authentication data models (users, sessions, institutions)
 - ✅ Auth module structure (`src/auth/`)
-- 🚧 Auth0 client implementation with institution registry
-- ⏳ JWT middleware for token validation
-- ⏳ Authentication API endpoints (login, callback, onboarding)
-- ⏳ User management system with role storage
-- ⏳ FastAPI integration with auth middleware
+- ✅ Auth0 client implementation with institution registry
+- ✅ JWT middleware for token validation and user context injection
+- ✅ Authentication API endpoints (login, callback, onboarding, profile, logout)
+- ✅ User management system with in-memory storage for pilot
+- ✅ FastAPI integration with authentication middleware
 
 **Key Components:**
 - **Institution Registry**: Curated list of partner educational institutions
@@ -225,8 +383,55 @@ curl http://localhost:8000/health/
 - Auth0 as universal authentication hub to avoid vendor lock-in
 - Support for educational SSO (SAML) and social login fallbacks
 
-## Phase 5: Additional Model Providers (Future)
-**Future Tasks:**
+## Phase 5: Containerization & Deployment (Next Priority)
+**Planned Tasks:**
+- **Docker Implementation**: Create Dockerfile with multi-stage builds for optimized container size
+- **Docker Compose**: Local development environment with all services (API, Auth0, optional vLLM)
+- **Container Optimization**: Dependency caching, security hardening, health checks
+- **Environment Configuration**: Container-friendly environment variable handling
+- **Cloud Integration**: Integration with infrastructure being developed in `../augmented-infra`
+- **Kubernetes Manifests**: Deployments, services, ingress, and ConfigMaps for cloud deployment
+- **CI/CD Pipeline**: Automated testing, building, and deployment workflows
+
+**Key Components:**
+- `Dockerfile` with multi-stage builds for production optimization
+- `docker-compose.yml` for local development with service dependencies
+- Kubernetes manifests (deployment, service, ingress, configmap)
+- Health check endpoints optimized for container orchestration
+- Environment-specific configuration management
+- Integration points with `../augmented-infra` cloud infrastructure
+
+**Benefits:**
+- **Deployment Ready**: Containerized application ready for cloud deployment
+- **Development Consistency**: Identical environments across development, testing, and production
+- **Scalability**: Kubernetes-ready for horizontal scaling and load balancing
+- **Infrastructure Integration**: Seamless integration with existing cloud infrastructure
+- **CI/CD Ready**: Automated deployment pipeline for continuous delivery
+
+## Phase 6: Database Integration
+**Planned Tasks:**
+- **SQLite Implementation**: Replace in-memory user storage with persistent SQLite database
+- **Database Schema**: Design tables for users, sessions, chat history, and analytics
+- **Container Persistence**: Database file persistence and backup in containerized environments
+- **Migration System**: Database versioning and upgrade scripts for schema changes
+- **Analytics Queries**: SQL queries for user behavior analysis and team reporting
+- **Data Export**: Backup capabilities and data analysis export utilities
+
+**Key Components:**
+- `DatabaseManager` class for SQLite operations and connection management
+- Database models with SQLAlchemy for users, sessions, conversations, and analytics
+- Container volume management for database persistence
+- Migration scripts for database schema versioning and upgrades
+- Analytics endpoints for real-time user behavior and usage reporting
+
+**Benefits:**
+- **Demo Persistence**: User accounts and chat history survive restarts and deployments
+- **Container-Ready**: Database persistence works seamlessly in containerized environments
+- **Analytics Ready**: SQL-based user behavior analysis for team insights
+- **Backup & Recovery**: Database file backup and restoration capabilities
+
+## Phase 7: Additional Model Providers
+**Planned Tasks:**
 - Implement Anthropic adapter for Claude models
 - Create Google adapter for Gemini models  
 - Enhance model registry with provider-specific configurations
@@ -238,7 +443,7 @@ curl http://localhost:8000/health/
 - Extended model registry with provider-specific parameters
 - Multi-modal support for text and image inputs
 
-## Phase 5: Data Collection System
+## Phase 8: Enhanced Data Collection System
 **Planned Tasks:**
 - Design logging schema for conversation data
 - Implement metrics collection (response times, model performance)
@@ -247,22 +452,9 @@ curl http://localhost:8000/health/
 
 **Key Components:**
 - Structured logging with JSON format
-- Database integration (SQLite for local, PostgreSQL for production)
-- Analytics dashboard endpoints
+- Enhanced analytics dashboard endpoints
 - Data anonymization utilities
-
-## Phase 6: Containerization & Deployment
-**Planned Tasks:**
-- Generate Dockerfile for the application
-- Create docker-compose for local development
-- Build Kubernetes manifests for AWS deployment
-- Create deployment scripts and health checks
-
-**Key Components:**
-- Multi-stage Docker builds
-- Environment-specific configurations
-- Kubernetes deployments, services, and ingress
-- Monitoring and logging integration
+- FERPA compliance and privacy controls
 
 ## Configuration Strategy
 
