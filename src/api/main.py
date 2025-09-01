@@ -11,8 +11,10 @@ from fastapi.responses import JSONResponse
 import structlog
 
 from ..config.settings import settings
+from ..auth.middleware import AuthenticationMiddleware
 from .routes.chat import router as chat_router
 from .routes.health import router as health_router
+from .routes.auth import router as auth_router
 
 
 # Configure structured logging
@@ -66,6 +68,15 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+)
+
+# Add authentication middleware
+app.add_middleware(
+    AuthenticationMiddleware,
+    excluded_paths=[
+        "/", "/docs", "/redoc", "/openapi.json", 
+        "/health", "/auth", "/favicon.ico"
+    ]
 )
 
 
@@ -154,8 +165,9 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
-app.include_router(health_router, prefix="/health", tags=["Health"])
-app.include_router(chat_router, prefix="/api/v1", tags=["Chat"])
+app.include_router(health_router, tags=["Health"])
+app.include_router(auth_router, tags=["Authentication"])
+app.include_router(chat_router, prefix="/v1", tags=["Chat"])
 
 
 @app.get("/")
