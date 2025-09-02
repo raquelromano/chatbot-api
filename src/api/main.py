@@ -165,8 +165,8 @@ async def general_exception_handler(request: Request, exc: Exception):
 
 
 # Include routers
-app.include_router(health_router, tags=["Health"])
-app.include_router(auth_router, tags=["Authentication"])
+app.include_router(health_router, prefix="/health", tags=["Health"])
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(chat_router, prefix="/v1", tags=["Chat"])
 
 

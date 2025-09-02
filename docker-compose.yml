@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  chatbot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8000
+      - DEBUG=false
+      - LOG_LEVEL=info
+      # Auth0 settings (set these in .env file)
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN}
+      - AUTH0_CLIENT_ID=${AUTH0_CLIENT_ID}
+      - AUTH0_CLIENT_SECRET=${AUTH0_CLIENT_SECRET}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE}
+      - SECRET_KEY=${SECRET_KEY}
+      # Model API keys (set these in .env file)
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - chatbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  # Optional: local vLLM service for testing
+  vllm-server:
+    image: vllm/vllm-openai:latest
+    ports:
+      - "8001:8000"
+    environment:
+      - MODEL=microsoft/DialoGPT-medium
+    command: >
+      --model microsoft/DialoGPT-medium
+      --host 0.0.0.0
+      --port 8000
+      --api-key dummy-key
+    networks:
+      - chatbot-network
+    profiles:
+      - with-vllm
+    restart: unless-stopped
+
+networks:
+  chatbot-network:
+    driver: bridge
+
+volumes:
+  logs:
+    driver: local

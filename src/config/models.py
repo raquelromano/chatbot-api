@@ -71,6 +71,7 @@ class ModelRegistry:
                 model_id="gpt-3.5-turbo",
                 client_type=ClientType.OPENAI_COMPATIBLE,
                 provider="OpenAI",
+                api_base="https://api.openai.com/v1",
                 api_key_env="OPENAI_API_KEY",
                 max_tokens=4096,
                 context_length=16385
@@ -80,6 +81,7 @@ class ModelRegistry:
                 model_id="gpt-4o",
                 client_type=ClientType.OPENAI_COMPATIBLE,
                 provider="OpenAI",
+                api_base="https://api.openai.com/v1",
                 api_key_env="OPENAI_API_KEY",
                 max_tokens=4096,
                 context_length=128000
