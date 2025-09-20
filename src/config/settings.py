@@ -21,11 +21,19 @@ class Settings(BaseSettings):
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
     
-    # Auth0 configuration
+    # Auth0 configuration (legacy)
     auth0_domain: Optional[str] = Field(default=None, env="AUTH0_DOMAIN")
     auth0_client_id: Optional[str] = Field(default=None, env="AUTH0_CLIENT_ID")
     auth0_client_secret: Optional[str] = Field(default=None, env="AUTH0_CLIENT_SECRET")
     auth0_audience: Optional[str] = Field(default=None, env="AUTH0_AUDIENCE")
+
+    # AWS Cognito configuration
+    cognito_user_pool_id: Optional[str] = Field(default=None, env="COGNITO_USER_POOL_ID")
+    cognito_client_id: Optional[str] = Field(default=None, env="COGNITO_CLIENT_ID")
+    cognito_region: Optional[str] = Field(default=None, env="COGNITO_REGION")
+    aws_account_id: Optional[str] = Field(default=None, env="AWS_ACCOUNT_ID")
+
+    # JWT configuration
     jwt_secret_key: str = Field(default="development-key-change-in-production", env="JWT_SECRET_KEY")
     jwt_algorithm: str = Field(default="HS256", env="JWT_ALGORITHM")
     jwt_expiration_hours: int = Field(default=24, env="JWT_EXPIRATION_HOURS")

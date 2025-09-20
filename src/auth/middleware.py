@@ -5,6 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import logging
 from datetime import datetime
 from .auth0_client import auth0_client
+from .cognito_client import cognito_client
 from .models import UserRole, UserInfo
 from ..config.settings import settings
 
@@ -12,6 +13,16 @@ logger = logging.getLogger(__name__)
 
 # Security scheme for extracting Bearer tokens
 security = HTTPBearer(auto_error=False)
+
+
+def get_auth_client():
+    """Get the appropriate auth client (Cognito preferred, Auth0 fallback)."""
+    if cognito_client:
+        return cognito_client
+    elif auth0_client:
+        return auth0_client
+    else:
+        return None
 
 
 class AuthenticationError(HTTPException):
@@ -71,13 +82,14 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             raise AuthenticationError("Missing or invalid authorization header")
         
         token = auth_header[7:]  # Remove "Bearer " prefix
-        
-        if not auth0_client:
+
+        auth_client = get_auth_client()
+        if not auth_client:
             raise AuthenticationError("Authentication service not configured")
-        
+
         try:
             # Verify JWT token
-            payload = auth0_client.verify_internal_jwt(token)
+            payload = auth_client.verify_internal_jwt(token)
             
             # Create UserInfo from JWT payload
             user_info = UserInfo(
@@ -197,22 +209,24 @@ def check_endpoint_permission(endpoint: str, method: str, user_role: UserRole) -
     return False
 
 
-async def validate_token_with_auth0(token: str) -> dict:
-    """Validate token directly with Auth0 (fallback method)."""
-    if not auth0_client:
-        raise AuthenticationError("Auth0 client not configured")
-    
+async def validate_token_with_provider(token: str) -> dict:
+    """Validate token directly with the auth provider (fallback method)."""
+    auth_client = get_auth_client()
+    if not auth_client:
+        raise AuthenticationError("Auth client not configured")
+
     try:
-        # Get JWKS from Auth0
-        jwks = await auth0_client.get_jwks()
-        
-        # Validate token against Auth0 JWKS
+        # Get JWKS from the provider
+        jwks = await auth_client.get_jwks()
+
+        # Validate token against provider JWKS
         # This is a simplified version - production should handle key rotation
-        payload = auth0_client.verify_internal_jwt(token)
+        payload = auth_client.verify_internal_jwt(token)
         return payload
-        
+
     except Exception as e:
-        raise AuthenticationError(f"Auth0 token validation failed: {str(e)}")
+        provider_name = "Cognito" if cognito_client else "Auth0" if auth0_client else "Unknown"
+        raise AuthenticationError(f"{provider_name} token validation failed: {str(e)}")
 
 
 class TokenBlacklist:

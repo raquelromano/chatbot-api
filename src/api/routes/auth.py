@@ -8,6 +8,7 @@ from urllib.parse import urlencode
 from datetime import datetime
 
 from ...auth.auth0_client import auth0_client
+from ...auth.cognito_client import cognito_client
 from ...auth.middleware import (
     get_current_user, require_auth, token_blacklist,
     AuthenticationError, AuthorizationError
@@ -21,6 +22,16 @@ from ...config.settings import settings
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+
+def get_auth_client():
+    """Get the appropriate auth client (Cognito preferred, Auth0 fallback)."""
+    if cognito_client:
+        return cognito_client
+    elif auth0_client:
+        return auth0_client
+    else:
+        return None
 
 
 class OnboardingRequest(BaseModel):
@@ -44,26 +55,27 @@ class UserProfileResponse(BaseModel):
 @router.get("/login", response_model=LoginResponse)
 async def login(
     redirect_uri: str = Query(..., description="Redirect URI after authentication"),
-    connection: Optional[str] = Query(None, description="Specific Auth0 connection"),
+    connection: Optional[str] = Query(None, description="Specific provider connection"),
     state: Optional[str] = Query(None, description="State parameter for CSRF protection")
 ):
     """Initiate OAuth login flow."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
         )
-    
+
     try:
-        login_response = auth0_client.generate_auth_url(
+        login_response = auth_client.generate_auth_url(
             redirect_uri=redirect_uri,
             connection=connection,
             state=state
         )
-        
+
         logger.info(f"Generated login URL for redirect_uri: {redirect_uri}")
         return login_response
-        
+
     except Exception as e:
         logger.error(f"Login initiation failed: {str(e)}")
         raise HTTPException(
@@ -81,7 +93,8 @@ async def auth_callback(
     error_description: Optional[str] = Query(None, description="Error description")
 ):
     """Handle OAuth callback and exchange code for tokens."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -100,13 +113,13 @@ async def auth_callback(
     
     try:
         # Exchange code for token
-        token_response = await auth0_client.exchange_code_for_token(code, redirect_uri)
-        
+        token_response = await auth_client.exchange_code_for_token(code, redirect_uri)
+
         # Get user info
-        user_info = await auth0_client.get_user_info(token_response.access_token)
-        
+        user_info = await auth_client.get_user_info(token_response.access_token)
+
         # Create internal JWT
-        internal_jwt = auth0_client.create_internal_jwt(user_info)
+        internal_jwt = auth_client.create_internal_jwt(user_info)
         
         logger.info(f"User authenticated: {user_info.email}")
         
@@ -133,7 +146,8 @@ async def complete_onboarding(
     current_user: UserInfo = Depends(require_auth)
 ):
     """Complete user onboarding by setting role and institution."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -142,7 +156,7 @@ async def complete_onboarding(
     try:
         # Validate institution if provided
         if request.institution_id:
-            institution = auth0_client.get_institution_by_id(request.institution_id)
+            institution = auth_client.get_institution_by_id(request.institution_id)
             if not institution or not institution.enabled:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -157,7 +171,7 @@ async def complete_onboarding(
         })
         
         # Create new JWT with updated info
-        new_jwt = auth0_client.create_internal_jwt(updated_user)
+        new_jwt = auth_client.create_internal_jwt(updated_user)
         
         logger.info(f"User onboarding completed: {updated_user.email} -> {request.role.value}")
         
@@ -179,7 +193,8 @@ async def complete_onboarding(
 @router.get("/profile", response_model=UserProfileResponse)
 async def get_user_profile(current_user: UserInfo = Depends(require_auth)):
     """Get current user profile."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -189,7 +204,7 @@ async def get_user_profile(current_user: UserInfo = Depends(require_auth)):
         # Get institution details if user has one
         institution = None
         if current_user.institution:
-            institution = auth0_client.get_institution_by_id(current_user.institution)
+            institution = auth_client.get_institution_by_id(current_user.institution)
         
         return UserProfileResponse(
             user=current_user,
@@ -210,7 +225,8 @@ async def refresh_access_token(
     current_user: UserInfo = Depends(require_auth)
 ):
     """Refresh access token using refresh token."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -218,8 +234,8 @@ async def refresh_access_token(
     
     try:
         # For simplicity, we'll just create a new internal JWT
-        # In production, you might want to validate the refresh token with Auth0
-        new_jwt = auth0_client.create_internal_jwt(current_user)
+        # In production, you might want to validate the refresh token with the provider
+        new_jwt = auth_client.create_internal_jwt(current_user)
         
         return TokenResponse(
             access_token=new_jwt,
@@ -242,7 +258,8 @@ async def logout(
     current_user: UserInfo = Depends(require_auth)
 ):
     """Logout user and invalidate tokens."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -256,8 +273,8 @@ async def logout(
             # Add token to blacklist
             token_blacklist.blacklist_token(token)
         
-        # Generate Auth0 logout URL
-        logout_url = auth0_client.generate_logout_url(logout_request.redirect_uri)
+        # Generate logout URL
+        logout_url = auth_client.generate_logout_url(logout_request.redirect_uri)
         
         logger.info(f"User logged out: {current_user.email}")
         
@@ -277,7 +294,8 @@ async def logout(
 @router.get("/institutions")
 async def list_institutions():
     """List available institutions for registration."""
-    if not auth0_client:
+    auth_client = get_auth_client()
+    if not auth_client:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Authentication service not configured"
@@ -286,7 +304,7 @@ async def list_institutions():
     try:
         # Filter only enabled institutions and remove sensitive config
         public_institutions = []
-        for institution in auth0_client.institutions.values():
+        for institution in auth_client.institutions.values():
             if institution.enabled:
                 public_institutions.append({
                     "institution_id": institution.institution_id,
@@ -311,7 +329,7 @@ async def auth_status():
     """Get authentication service status."""
     return {
         "auth_enabled": settings.enable_auth,
-        "auth0_configured": auth0_client is not None,
-        "auth_domain": settings.auth0_domain if settings.auth0_domain else None,
+        "auth_configured": get_auth_client() is not None,
+        "auth_provider": "cognito" if cognito_client else "auth0" if auth0_client else None,
         "protected_endpoints": settings.auth_required_endpoints
     }
