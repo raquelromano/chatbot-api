@@ -4,7 +4,7 @@ This document captures the technical design decisions, system architecture, and 
 
 ## System Overview
 
-The chatbot wrapper API is designed as a unified interface for multiple AI model providers using an adapter-based architecture. The system supports OpenAI API, local vLLM models, OpenAI-compatible providers, with planned support for Anthropic and Google models.
+The chatbot API is designed as a serverless unified interface for multiple AI model providers using an adapter-based architecture. The system supports OpenAI API, local vLLM models, OpenAI-compatible providers, with planned support for Anthropic and Google models. The application deploys as a serverless architecture on AWS Lambda with Cognito authentication and global edge caching.
 
 ## Core Architecture Decisions
 
@@ -34,15 +34,16 @@ The chatbot wrapper API is designed as a unified interface for multiple AI model
 
 ## Authentication Strategy
 
-### Auth0-Based Universal SSO Architecture
+### AWS Cognito Universal SSO Architecture
 
-#### Long-term Vision
-- **Standards-Based Approach**: OAuth2/OIDC with JWT tokens for vendor independence
-- **Universal Compatibility**: Support for educational institutions' existing SSO systems
-- **Migration Path**: Standard protocols enable easy provider switching
+#### Production Implementation
+- **Standards-Based Approach**: OAuth2/OIDC with JWT tokens via AWS Cognito User Pools
+- **Serverless Native**: Integrated with API Gateway JWT authorizer for automatic validation
+- **Multi-Provider Support**: Support for educational institutions' existing SSO systems
+- **Enterprise Ready**: AWS-managed security, scalability, and compliance features
 
-#### Current Simplified Implementation
-For the initial 6-month pilot with <5 partner institutions:
+#### Current Cognito Implementation
+Production deployment with AWS Cognito User Pools for educational pilot:
 
 **Institution Registry Pattern**:
 - Manually curated list of partner institutions with metadata
@@ -51,14 +52,14 @@ For the initial 6-month pilot with <5 partner institutions:
 
 **Institution Configuration Structure**:
 ```python
-# Example from src/auth/auth0_client.py
+# Example from src/auth/cognito_client.py
 InstitutionConfig(
     institution_id="example",               # Unique identifier for database
     name="Example University",              # Display name for UI
     domain="example.edu",                   # Email domain for auto-detection
     auth_provider=AuthProvider.GOOGLE,      # Preferred SSO provider (Google/Microsoft/SAML)
     saml_config={...},                     # SAML configuration if applicable
-    oidc_config={...},                     # OIDC configuration if applicable  
+    oidc_config={...},                     # OIDC configuration if applicable
     logo_url="https://example.edu/logo",   # Institution branding for UI
     primary_color="#003366",               # Institution brand color
     enabled=True                           # Whether institution is currently active
@@ -66,25 +67,32 @@ InstitutionConfig(
 ```
 
 **Authentication Flow Design**:
-1. User initiates login via Auth0 (Google, Microsoft, GitHub, SAML)
-2. System extracts email domain and checks institution registry
-3. If institutional email detected: suggest institution and default role
-4. If not detected or individual: user selects "Individual" + role  
-5. Store institution_id and role in user database
-6. Include institution/role in JWT claims for authorization
+1. User accesses Cognito Hosted UI (Google, Microsoft, GitHub, SAML providers)
+2. API Gateway validates Cognito JWT token automatically
+3. System extracts email domain and checks institution registry
+4. If institutional email detected: suggest institution and default role
+5. If not detected or individual: user selects "Individual" + role
+6. Store institution_id and role in user profile
+7. Include institution/role in JWT claims for authorization
 
 **Supported Authentication Methods**:
-- **Google Workspace**: Most common for educational institutions
-- **Microsoft Azure AD/Office 365**: Enterprise and education accounts  
-- **SAML**: Custom enterprise SSO systems used by schools
-- **GitHub**: Individual developer accounts
-- **Individual**: Non-institutional users with manual role selection
+- **Google Workspace**: OAuth integration via Cognito identity providers
+- **Microsoft Azure AD/Office 365**: SAML/OIDC integration via Cognito
+- **SAML**: Custom enterprise SSO systems via Cognito SAML provider
+- **GitHub**: OAuth integration via Cognito social providers
+- **Individual**: Username/password with Cognito User Pool
 
-### Benefits of Simplified Approach
-- **Low Maintenance**: Manual registry manageable for small number of institutions
-- **User Friendly**: Clear role selection, works for both institutional and individual users
-- **Scalable**: Easy to add SAML attributes or Auth0 custom claims later
-- **Standards-Based**: Uses OAuth2/OIDC, preserves migration path to full implementation
+**Auth0 Fallback Support**:
+- Legacy Auth0 client maintained for local development
+- Dual authentication provider support in middleware
+- Seamless migration path between providers
+
+### Benefits of Cognito Architecture
+- **AWS Native**: Integrated with Lambda, API Gateway, and other AWS services
+- **Serverless Scaling**: Automatic scaling and management by AWS
+- **Enterprise Security**: SOC2, HIPAA, and GDPR compliant authentication
+- **Cost Effective**: Pay-per-user pricing model suitable for educational pilot
+- **Standards-Based**: OAuth2/OIDC compatible with existing SSO systems
 
 ## Model Adapter Architecture
 
@@ -116,17 +124,26 @@ InstitutionConfig(
 
 ## Deployment Architecture
 
-### AWS Serverless Strategy
-- **Design Choice**: AWS Lambda + API Gateway + Cognito serverless architecture
-- **Rationale**: Cost-effective for low-traffic educational use cases, auto-scaling, no server management
-- **Implementation**: FastAPI with Mangum wrapper, CDK infrastructure, Cognito User Pools
-- **Benefits**: Pay-per-request pricing (~$2-6/month), automatic scaling, managed infrastructure
+### AWS Serverless Strategy (Production)
+- **Design Choice**: AWS Lambda + API Gateway + Cognito + CloudFront serverless architecture
+- **Rationale**: Cost-effective for educational use cases, auto-scaling, no server management
+- **Implementation**: FastAPI with Mangum wrapper, CDK infrastructure as code, Cognito User Pools
+- **Benefits**: Pay-per-request pricing (~$2-6/month), automatic scaling, global distribution
+
+### Complete Infrastructure Stack
+- **AWS Lambda**: FastAPI application with Mangum ASGI adapter
+- **API Gateway**: HTTP API with Cognito JWT authorizer for authentication
+- **Cognito User Pools**: OAuth authentication with multiple identity providers
+- **CloudFront**: Global CDN for edge caching and performance optimization
+- **S3**: Static asset storage with CloudFront integration
+- **Parameter Store**: Encrypted secrets and configuration management
+- **CloudWatch**: Monitoring, logging, and alerting
 
 ### API Gateway Integration
 - **Design Choice**: HTTP API with Cognito User Pool authorizer
-- **Implementation**: CORS configuration, JWT token validation, rate limiting
-- **Rationale**: Lower cost than REST API, built-in authentication, serverless-native
-- **Benefits**: Integrated auth, automatic scaling, cost optimization
+- **Implementation**: CORS configuration, automatic JWT validation, rate limiting support
+- **Rationale**: Lower cost than REST API, built-in Cognito authentication, serverless-native
+- **Benefits**: Integrated auth, automatic scaling, cost optimization, global distribution
 
 ### Health Check Architecture
 - **Design Choice**: Lambda-compatible health endpoints with API Gateway integration
@@ -134,23 +151,30 @@ InstitutionConfig(
 - **Rationale**: Serverless-compatible monitoring, CloudWatch integration
 - **Benefits**: Native AWS monitoring, cost-effective health checks, auto-scaling compatibility
 
-### Environment Configuration Pattern
-- **Design Choice**: Lambda environment variables with AWS Systems Manager Parameter Store
-- **Implementation**: Pydantic Settings with AWS Secrets Manager integration
-- **Rationale**: Serverless-native secrets management, encrypted parameter storage
-- **Benefits**: AWS-native security, automatic secret rotation, cost-effective configuration
+### Secrets Management Architecture
+- **Design Choice**: AWS Systems Manager Parameter Store for encrypted configuration
+- **Implementation**: Lambda function loads parameters at startup with IAM permissions
+- **Rationale**: Serverless-native secrets management, encrypted storage, cost-effective
+- **Benefits**: AWS-native security, automatic encryption, centralized configuration
+
+### CI/CD Pipeline Architecture
+- **Design Choice**: GitHub Actions with AWS CDK deployment
+- **Implementation**: Automated testing, code quality checks, CDK synthesis and deployment
+- **Rationale**: Version-controlled infrastructure, automated validation, consistent deployments
+- **Benefits**: Infrastructure as code, automated quality gates, rollback capabilities
 
 ## Security Architecture
 
 ### API Key Management
-- **Design Choice**: Environment variable-based secrets with runtime validation
-- **Implementation**: No secrets in code, environment-specific configuration
-- **Security Controls**: Never commit keys, sanitize logs, validate at startup
+- **Design Choice**: AWS Parameter Store encrypted secrets with runtime loading
+- **Implementation**: No secrets in code, encrypted storage, IAM-controlled access
+- **Security Controls**: Never commit keys, sanitize logs, encrypted at rest and in transit
 
 ### Authentication Security
-- **Cognito JWT Strategy**: AWS Cognito User Pool JWT tokens with automatic validation
+- **Cognito JWT Strategy**: AWS Cognito User Pool JWT tokens with automatic API Gateway validation
 - **Token Validation**: API Gateway built-in Cognito authorizer with Lambda context injection
-- **Authorization**: Cognito User Groups for role-based access control
+- **Authorization**: Role-based access control via JWT claims and middleware validation
+- **Multi-Provider Support**: Cognito primary with Auth0 fallback for development
 
 ### Data Privacy
 - **Design Choice**: Structured logging with data sanitization capabilities
@@ -197,12 +221,13 @@ InstitutionConfig(
 - **Design Choice**: Backend API service with separate React frontend
 - **Benefits**: Technology independence, scalability, deployment flexibility
 - **API Design**: RESTful endpoints with OpenAI compatibility for easy integration
-- **Deployment**: React app on S3 + CloudFront, API on Lambda + API Gateway
+- **Deployment**: React app on S3 + CloudFront, API on Lambda + API Gateway + CloudFront
 
-### AWS Serverless Integration
-- **Cloud Infrastructure**: Native AWS services (Lambda, API Gateway, Cognito, S3, CloudFront)
+### AWS Serverless Integration (Production)
+- **Cloud Infrastructure**: Native AWS services (Lambda, API Gateway, Cognito, S3, CloudFront, Parameter Store)
 - **Service Orchestration**: API Gateway routing, Lambda auto-scaling, CloudWatch monitoring
-- **CI/CD Integration**: AWS CodePipeline or GitHub Actions for serverless deployment workflows
+- **Global Distribution**: CloudFront edge locations for worldwide performance
+- **CI/CD Integration**: GitHub Actions with AWS CDK for infrastructure as code deployment
 
 ## Future Architecture Considerations
 

@@ -1,93 +1,80 @@
-# Chatbot Wrapper Demo
+# Chatbot API
 
-A chatbot demo with adapter-based architecture that provides a unified interface for multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers, with planned support for Anthropic and Google models. Designed for data collection on chatbot usage patterns and can be deployed locally or in containers on Kubernetes clusters.
+A serverless chatbot API with adapter-based architecture that provides a unified interface for multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers, with planned support for Anthropic and Google models.
+
+**Features**: AWS Cognito authentication, serverless AWS Lambda deployment, global edge caching, and enterprise-grade security.
 
 **Note**: This is the backend API service. The frontend UI is developed separately in `../chatbot-frontend`.
 
 ## Quick Start
 
-### Option 1: Using uv (recommended - faster)
+### Local Development
 
-1. **Install uv:**
+1. **Install dependencies:**
    ```bash
+   # Using uv (recommended)
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-2. **Set up Python environment:**
-   ```bash
-   uv venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
-
-3. **Install dependencies:**
-   
-   For API-only (faster, recommended for testing):
-   ```bash
-   uv pip install -r requirements-api-only.txt
-   ```
-   
-   For full installation including vLLM (takes longer):
-   ```bash
+   uv venv && source .venv/bin/activate
    uv pip install -r requirements.txt
-   ```
 
-### Option 2: Using traditional pip
-
-1. **Set up Python environment:**
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-
-2. **Install dependencies:**
-   
-   For API-only (faster, recommended for testing):
-   ```bash
-   pip install -r requirements-api-only.txt
-   ```
-   
-   For full installation including vLLM (takes longer):
-   ```bash
+   # Or using pip
+   python -m venv venv && source venv/bin/activate
    pip install -r requirements.txt
    ```
 
-### Both options: Configure and run
-
-3. **Configure environment:**
+2. **Configure environment:**
    ```bash
    cp .env.example .env
    # Edit .env with your API keys and configuration
    ```
 
-4. **Run the application:**
+3. **Run locally:**
    ```bash
    python run_server.py
-   # or
-   uvicorn src.api.main:app --reload
+   # API docs: http://localhost:8000/docs
    ```
 
-5. **Test the API:**
+4. **Test the API:**
    ```bash
-   # In another terminal
    python test_api.py
+   ```
+
+### AWS Deployment
+
+1. **Configure AWS credentials:**
+   ```bash
+   aws configure
+   # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+   ```
+
+2. **Setup secrets:**
+   ```bash
+   ./scripts/setup-secrets.sh
+   # Update API keys in AWS Parameter Store
+   ```
+
+3. **Deploy to AWS:**
+   ```bash
+   ./deploy.sh
+   # Or use GitHub Actions for CI/CD
    ```
 
 ## Project Structure
 
 ```
-chatbot-wrapper-demo/
+chatbot-api/
 ├── src/
-│   ├── config/          # Configuration management for model switching
-│   ├── models/          # Model management and abstraction layer
+│   ├── config/          # Configuration management and settings
+│   ├── models/          # Model adapters and abstraction layer
 │   ├── api/             # FastAPI endpoints and request handling
-│   ├── web/             # Frontend chat interface
+│   ├── auth/            # Authentication (Cognito + Auth0)
 │   └── utils/           # Shared utilities and helpers
-├── docker/              # Docker configurations
-├── k8s/                 # Kubernetes manifests
+├── infrastructure/      # AWS CDK infrastructure as code
+├── .github/workflows/   # GitHub Actions CI/CD pipeline
 ├── scripts/             # Deployment and utility scripts
-├── tests/               # Test suites
-├── data/                # Data storage and exports
-└── docs/                # Additional documentation
+├── lambda_handler.py    # AWS Lambda entry point
+├── deploy.sh           # Deployment script
+└── requirements.txt    # Python dependencies
 ```
 
 ## Development
@@ -156,51 +143,49 @@ ANTHROPIC_API_KEY=your_anthropic_key_here
 
 ### Authentication Configuration
 
-#### Auth0 Setup (Required for Authentication)
+#### AWS Cognito Setup (Primary - Deployed)
 ```bash
 # Enable/disable authentication system
-ENABLE_AUTH=false                 # Set to 'true' to enable authentication
+ENABLE_AUTH=true                              # Set to 'true' to enable authentication
 
-# Auth0 Configuration (required when ENABLE_AUTH=true)
-AUTH0_DOMAIN=your-tenant.auth0.com              # Your Auth0 domain
-AUTH0_CLIENT_ID=your_auth0_client_id            # Auth0 application client ID
-AUTH0_CLIENT_SECRET=your_auth0_client_secret    # Auth0 application client secret
-AUTH0_AUDIENCE=https://your-api-identifier      # Auth0 API identifier (optional)
+# AWS Cognito Configuration (primary for deployment)
+COGNITO_USER_POOL_ID=us-east-1_xxxxxxxxx     # From CDK deployment outputs
+COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxx  # From CDK deployment outputs
+COGNITO_REGION=us-east-1                      # AWS region
+AWS_ACCOUNT_ID=123456789012                   # Your AWS account ID
 
 # JWT Token Configuration
 JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production  # JWT signing key
-JWT_ALGORITHM=HS256                             # JWT algorithm (HS256 recommended)
-JWT_EXPIRATION_HOURS=24                         # Token expiration time
+JWT_ALGORITHM=HS256                           # JWT algorithm (HS256 recommended)
+JWT_EXPIRATION_HOURS=24                       # Token expiration time
 
 # Protected Endpoints
-AUTH_REQUIRED_ENDPOINTS=["/v1/chat/completions"] # Comma-separated list of protected endpoints
+AUTH_REQUIRED_ENDPOINTS=/v1/chat/completions,/v1/models # Comma-separated list
 ```
 
-#### Auth0 Application Setup
+#### Auth0 Setup (Legacy Fallback)
+```bash
+# Auth0 Configuration (fallback for local development)
+AUTH0_DOMAIN=your-tenant.auth0.com            # Your Auth0 domain
+AUTH0_CLIENT_ID=your_auth0_client_id          # Auth0 application client ID
+AUTH0_CLIENT_SECRET=your_auth0_client_secret  # Auth0 application client secret
+AUTH0_AUDIENCE=https://your-api-identifier    # Auth0 API identifier (optional)
+```
 
-To use authentication, you need to configure an Auth0 application:
+#### Cognito User Pool Setup
 
-1. **Create Auth0 Account**: Sign up at [auth0.com](https://auth0.com)
+The CDK deployment automatically creates a Cognito User Pool with:
 
-2. **Create Application**:
-   - Go to Applications > Create Application
-   - Choose "Regular Web Applications"
-   - Note the Domain, Client ID, and Client Secret
+1. **OAuth Providers**: Google, Microsoft, SAML, GitHub support
+2. **Hosted UI**: Pre-built login/signup interface
+3. **JWT Tokens**: Automatic token validation via API Gateway
+4. **User Management**: Admin functions for user creation/deletion
 
-3. **Configure Application**:
-   - **Allowed Callback URLs**: `http://localhost:8000/auth/callback`
-   - **Allowed Logout URLs**: `http://localhost:8000/`
-   - **Allowed Web Origins**: `http://localhost:8000`
-
-4. **Enable Social Connections** (optional):
-   - Go to Authentication > Social
-   - Enable Google, Microsoft, GitHub as needed
-   - Configure with your OAuth apps
-
-5. **Create API** (optional but recommended):
-   - Go to Applications > APIs > Create API
-   - Set identifier (e.g., `https://chatbot-api`)
-   - Use this as AUTH0_AUDIENCE
+To configure OAuth providers:
+1. Go to AWS Cognito Console
+2. Select your User Pool (created by CDK)
+3. Configure identity providers under "Sign-in experience"
+4. Add OAuth app credentials for each provider
 
 ### Data Collection & Logging
 ```bash
@@ -322,6 +307,32 @@ curl http://localhost:8000/auth/profile \
 
 
 
+## Deployment Architecture
+
+The application deploys as a serverless architecture on AWS:
+
+- **AWS Lambda**: FastAPI application with Mangum adapter
+- **API Gateway**: HTTP API with Cognito JWT authorization
+- **Cognito User Pools**: OAuth authentication with multiple providers
+- **CloudFront**: Global CDN for edge caching and performance
+- **S3**: Static asset storage with secure access
+- **Parameter Store**: Encrypted secrets and configuration management
+- **CloudWatch**: Monitoring, logging, and alerting
+
 ## Project Status
 
-The application is currently **fully functional** with completed authentication, model adapters, and API endpoints. Next priority is containerization and deployment (Phase 5).
+**✅ PRODUCTION READY** - Fully functional serverless API with enterprise authentication, global deployment, and CI/CD pipeline.
+
+### Completed Features
+- ✅ Multi-provider model adapters (OpenAI, vLLM, compatible APIs)
+- ✅ AWS Cognito authentication with OAuth providers
+- ✅ Serverless AWS Lambda deployment with CDK
+- ✅ Global edge caching via CloudFront
+- ✅ Secure secrets management via Parameter Store
+- ✅ Automated CI/CD with GitHub Actions
+- ✅ Health monitoring and structured logging
+
+### Next Steps
+- 🔄 **Phase 6**: DynamoDB integration for persistent user storage
+- 🔄 **Phase 7**: Additional model providers (Anthropic, Google)
+- 🔄 **Phase 8**: Enhanced analytics and usage tracking

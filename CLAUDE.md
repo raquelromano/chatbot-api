@@ -46,14 +46,26 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ User management system with role storage
 - ✅ Integration with main FastAPI application
 
+**Phase 5 - AWS Lambda Deployment: ✅ COMPLETED**
+- ✅ Mangum wrapper for FastAPI on AWS Lambda
+- ✅ AWS CDK infrastructure stack (Lambda, API Gateway, Cognito, CloudFront)
+- ✅ AWS Cognito User Pools integration with OAuth providers
+- ✅ API Gateway HTTP API with Cognito JWT authorizer
+- ✅ AWS Systems Manager Parameter Store for secrets management
+- ✅ GitHub Actions CI/CD pipeline for automated deployment
+- ✅ CloudFront distribution for global edge caching
+- ✅ IAM roles and security policies
+
 
 ## Development Commands
 
 ### Key Commands for Claude
-- `python run_server.py` - Start the chatbot service
+- `python run_server.py` - Start the chatbot service locally
 - `python test_api.py` - Test API endpoints
-- `uv pip install -r requirements-api-only.txt` - Install dependencies
+- `uv pip install -r requirements.txt` - Install dependencies
 - `black . && isort . && flake8 . && mypy src/` - Code quality checks
+- `./deploy.sh` - Deploy to AWS Lambda using CDK
+- `./scripts/setup-secrets.sh` - Configure AWS Parameter Store secrets
 
 ## Implementation Guidelines
 
@@ -66,28 +78,21 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 
 ## Authentication Implementation
 
-**Current Status**: Auth0-based SSO with institution registry for educational pilot
+**Current Status**: AWS Cognito User Pools with Auth0 fallback support for educational pilot
 
 **Key Components**:
 - **Auth Models** (`src/auth/models.py`): User, session, and institution data structures
-- **Auth0 Client** (`src/auth/auth0_client.py`): OAuth flows + institution registry lookup
-- **JWT Middleware** (`src/auth/middleware.py`): Token validation and user context
+- **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito OAuth flows + institution registry
+- **Auth0 Client** (`src/auth/auth0_client.py`): Legacy Auth0 support (fallback)
+- **JWT Middleware** (`src/auth/middleware.py`): Token validation for both providers
 - **Auth Endpoints** (`src/auth/auth.py`): Login, callback, onboarding, profile management
 - **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
 
-**Supported Methods**: Google, Microsoft, SAML, GitHub, Individual accounts
+**Supported Methods**: Google, Microsoft, SAML, GitHub, Individual accounts via Cognito Hosted UI
 
-## Next Steps (Phase 5+ Implementation)
+## Next Steps (Phase 6+ Implementation)
 
-1. **AWS Lambda Deployment** (Phase 5 - Next Priority):
-   - **Lambda Handler**: Implement Mangum wrapper for FastAPI on AWS Lambda
-   - **CDK Infrastructure**: AWS CDK stack for Lambda, API Gateway, Cognito, S3, CloudFront
-   - **Cognito Integration**: Replace Auth0 with AWS Cognito User Pools for authentication
-   - **API Gateway**: HTTP API with Cognito authorizer for cost optimization
-   - **Environment Configuration**: Lambda environment variables and secrets management
-   - **CI/CD Pipeline**: Automated testing, building, and serverless deployment workflows
-
-2. **Database Integration** (Phase 6):
+1. **Database Integration** (Phase 6 - Next Priority):
    - **DynamoDB Implementation**: Replace in-memory user storage with AWS DynamoDB
    - **Database Schema**: User profiles, sessions, chat history, and analytics tables
    - **Migration System**: DynamoDB table creation and schema management
@@ -95,12 +100,12 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
    - **Data Export**: S3 data lake integration for analytics and reporting
    - **Serverless Persistence**: Native AWS serverless database integration
 
-3. **Additional Model Providers** (Phase 7):
+2. **Additional Model Providers** (Phase 7):
    - **Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`): Claude model integration
    - **Google Adapter** (`src/models/adapters/google_adapter.py`): Gemini model support
    - **Enhanced Model Registry**: Provider-specific configurations and capability detection
 
-4. **Enhanced Data Collection System** (Phase 8):
+3. **Enhanced Data Collection System** (Phase 8):
    - **Conversation Analytics**: Track usage patterns, model performance, user engagement
    - **Real-time Metrics**: API response times, error rates, user activity dashboards
    - **Data Analysis Tools**: Built-in analytics endpoints for team insights
@@ -112,46 +117,62 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ **OpenAI Adapter** (`src/models/openai_adapter.py`): Supports OpenAI API, vLLM, and compatible providers
 - ✅ **Model Configuration** (`src/config/models.py`): Centralized model registry with Pydantic validation
 - ✅ **Adapter Factory** (`src/models/adapter_factory.py`): Runtime adapter management and health checks
-- ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration with Auth0 support
+- ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration with Cognito + Auth0 support
 - ✅ **FastAPI Application** (`src/api/main.py`): Complete web server with middleware and error handling
 - ✅ **API Routes** (`src/api/routes/`): Chat completions, health checks, model listing, and authentication
 - ✅ **API Models** (`src/api/models.py`): OpenAI-compatible request/response models
 - ✅ **Base Interfaces** (`src/models/base.py`): Abstract adapter interface and common models
-- ✅ **Authentication System** (`src/auth/`): Complete Auth0 integration with JWT middleware
-  - ✅ **Auth0 Client** (`src/auth/auth0_client.py`): OAuth flows and institution registry
-  - ✅ **JWT Middleware** (`src/auth/middleware.py`): Token validation and user context
+- ✅ **Authentication System** (`src/auth/`): Complete Cognito + Auth0 integration with JWT middleware
+  - ✅ **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito OAuth flows and user management
+  - ✅ **Auth0 Client** (`src/auth/auth0_client.py`): Legacy Auth0 OAuth flows and institution registry
+  - ✅ **JWT Middleware** (`src/auth/middleware.py`): Multi-provider token validation and user context
   - ✅ **Auth Endpoints** (`src/auth/auth.py`): Login, callback, onboarding, profile management
   - ✅ **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
+- ✅ **AWS Infrastructure** (`infrastructure/`): Complete CDK stack for serverless deployment
+  - ✅ **Lambda Handler** (`lambda_handler.py`): Mangum FastAPI wrapper with Parameter Store integration
+  - ✅ **CDK Stack** (`infrastructure/chatbot_stack.py`): Lambda, API Gateway, Cognito, CloudFront, S3
+  - ✅ **Secrets Management** (`scripts/setup-secrets.sh`): AWS Parameter Store configuration
+  - ✅ **CI/CD Pipeline** (`.github/workflows/deploy.yml`): Automated testing and deployment
 - ✅ **Testing Infrastructure** (`test_api.py`, `run_server.py`): Development and testing tools
-- ✅ **Installation Setup** (`requirements-api-only.txt`): Lightweight dependency management
+- ✅ **Deployment Tools** (`deploy.sh`, `requirements.txt`): Production deployment and dependency management
 
 
 ## Current Working State
 
-The application is now **fully functional** for Phase 3 objectives:
+The application is now **fully functional** for Phase 5 objectives with serverless AWS deployment:
 
-### ✅ Ready to Use
-- **Installation**: `uv pip install -r requirements-api-only.txt`
+### ✅ Local Development
+- **Installation**: `uv pip install -r requirements.txt`
 - **Startup**: `python run_server.py`
 - **Testing**: `python test_api.py`
 - **API Docs**: `http://localhost:8000/docs`
 
+### ✅ AWS Deployment
+- **Setup Secrets**: `./scripts/setup-secrets.sh`
+- **Deploy**: `./deploy.sh`
+- **CI/CD**: Automated deployment via GitHub Actions
+- **Monitoring**: CloudWatch logs and Lambda metrics
+
 ### ✅ Working Features
 - OpenAI-compatible REST API endpoints
+- AWS Cognito authentication with OAuth providers
 - Health checks and status monitoring
 - Model listing and discovery
 - Chat completions (streaming and non-streaming)
 - Error handling with structured logging
-- Kubernetes-ready health probes
+- Global edge caching via CloudFront
+- Secure secrets management via Parameter Store
 
 ### ⚠️ Configuration Required
-To use actual models, users need to:
-1. **For OpenAI**: Set `OPENAI_API_KEY` environment variable
-2. **For local vLLM**: Start vLLM server on `localhost:8001` with OpenAI-compatible API
-3. **For other providers**: Configure API endpoints in model registry
+To deploy and use:
+1. **AWS Setup**: Configure AWS credentials and account ID
+2. **Secrets**: Run `./scripts/setup-secrets.sh` and update API keys
+3. **Domain**: Configure custom domain in CDK stack (optional)
+4. **OAuth**: Configure OAuth providers in Cognito User Pool
 
 ### 🔧 Development Tools
-- `run_server.py`: Simple server startup with graceful shutdown
+- `run_server.py`: Local server startup with graceful shutdown
 - `test_api.py`: Comprehensive API endpoint testing
-- `requirements-api-only.txt`: Fast installation without heavy ML dependencies
+- `deploy.sh`: Production deployment with validation
+- `scripts/setup-secrets.sh`: AWS Parameter Store configuration
 - Interactive API documentation at `/docs` endpoint
