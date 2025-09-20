@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Chatbot wrapper API with adapter-based architecture supporting multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers.
 
-**Note**: Backend API service. Frontend: `../chatbot-frontend`. Infrastructure: `../augmented-infra`.
+**Note**: Backend API service. Frontend: `../chatbot-frontend`. Deployment: AWS Lambda + API Gateway + Cognito serverless architecture.
 
 ## Current Status
 
@@ -79,21 +79,21 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 
 ## Next Steps (Phase 5+ Implementation)
 
-1. **Containerization & Deployment** (Phase 5 - Next Priority):
-   - **Docker Implementation**: Create Dockerfile and docker-compose for containerized deployment
-   - **Container Optimization**: Multi-stage builds, dependency caching, security hardening
-   - **Environment Configuration**: Container-specific environment variable handling
-   - **Health Checks**: Docker and Kubernetes health probe configuration
-   - **Cloud Integration**: Integration with infrastructure in `../augmented-infra`
-   - **CI/CD Pipeline**: Automated testing, building, and deployment workflows
+1. **AWS Lambda Deployment** (Phase 5 - Next Priority):
+   - **Lambda Handler**: Implement Mangum wrapper for FastAPI on AWS Lambda
+   - **CDK Infrastructure**: AWS CDK stack for Lambda, API Gateway, Cognito, S3, CloudFront
+   - **Cognito Integration**: Replace Auth0 with AWS Cognito User Pools for authentication
+   - **API Gateway**: HTTP API with Cognito authorizer for cost optimization
+   - **Environment Configuration**: Lambda environment variables and secrets management
+   - **CI/CD Pipeline**: Automated testing, building, and serverless deployment workflows
 
 2. **Database Integration** (Phase 6):
-   - **SQLite Implementation**: Replace in-memory user storage with persistent SQLite database
+   - **DynamoDB Implementation**: Replace in-memory user storage with AWS DynamoDB
    - **Database Schema**: User profiles, sessions, chat history, and analytics tables
-   - **Migration System**: Database versioning and upgrade scripts
-   - **Analytics Queries**: SQL queries for user behavior analysis and reporting
-   - **Data Export**: Backup and analysis data export capabilities
-   - **Container Persistence**: Database file persistence in containerized environments
+   - **Migration System**: DynamoDB table creation and schema management
+   - **Analytics Queries**: DynamoDB queries for user behavior analysis and reporting
+   - **Data Export**: S3 data lake integration for analytics and reporting
+   - **Serverless Persistence**: Native AWS serverless database integration
 
 3. **Additional Model Providers** (Phase 7):
    - **Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`): Claude model integration

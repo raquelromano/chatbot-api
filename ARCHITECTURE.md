@@ -110,29 +110,35 @@ InstitutionConfig(
 
 ### Session Management
 - **Current**: In-memory storage for pilot phase simplicity
-- **Planned**: SQLite database for persistence and analytics
-- **Design Choice**: User profiles, sessions, chat history, and analytics in relational format
-- **Benefits**: Query capabilities for analytics, backup and recovery, FERPA compliance support
+- **Planned**: DynamoDB database for serverless persistence and analytics
+- **Design Choice**: User profiles, sessions, chat history in NoSQL format optimized for serverless
+- **Benefits**: Serverless-native persistence, automatic scaling, cost-effective storage, FERPA compliance support
 
 ## Deployment Architecture
 
-### Container Strategy
-- **Design Choice**: Docker containerization with multi-stage builds
-- **Rationale**: Consistent deployment across environments, dependency isolation
-- **Implementation**: Optimized containers with dependency caching, security hardening
-- **Benefits**: Environment consistency, scalability, cloud-ready deployment
+### AWS Serverless Strategy
+- **Design Choice**: AWS Lambda + API Gateway + Cognito serverless architecture
+- **Rationale**: Cost-effective for low-traffic educational use cases, auto-scaling, no server management
+- **Implementation**: FastAPI with Mangum wrapper, CDK infrastructure, Cognito User Pools
+- **Benefits**: Pay-per-request pricing (~$2-6/month), automatic scaling, managed infrastructure
+
+### API Gateway Integration
+- **Design Choice**: HTTP API with Cognito User Pool authorizer
+- **Implementation**: CORS configuration, JWT token validation, rate limiting
+- **Rationale**: Lower cost than REST API, built-in authentication, serverless-native
+- **Benefits**: Integrated auth, automatic scaling, cost optimization
 
 ### Health Check Architecture
-- **Design Choice**: Multiple health check endpoints for different orchestration needs
-- **Implementation**: `/health/live` (liveness), `/health/ready` (readiness), `/health/` (comprehensive)
-- **Rationale**: Kubernetes-compatible health probes, detailed service monitoring
-- **Benefits**: Proper container orchestration, service mesh compatibility, monitoring integration
+- **Design Choice**: Lambda-compatible health endpoints with API Gateway integration
+- **Implementation**: `/health/live`, `/health/ready`, `/health/` with Lambda warmup handling
+- **Rationale**: Serverless-compatible monitoring, CloudWatch integration
+- **Benefits**: Native AWS monitoring, cost-effective health checks, auto-scaling compatibility
 
 ### Environment Configuration Pattern
-- **Design Choice**: Environment variable-based configuration with validation
-- **Implementation**: Pydantic Settings classes with environment overrides
-- **Rationale**: 12-factor app compliance, secure secrets management
-- **Benefits**: Cloud-native deployment, easy configuration management, type safety
+- **Design Choice**: Lambda environment variables with AWS Systems Manager Parameter Store
+- **Implementation**: Pydantic Settings with AWS Secrets Manager integration
+- **Rationale**: Serverless-native secrets management, encrypted parameter storage
+- **Benefits**: AWS-native security, automatic secret rotation, cost-effective configuration
 
 ## Security Architecture
 
@@ -142,9 +148,9 @@ InstitutionConfig(
 - **Security Controls**: Never commit keys, sanitize logs, validate at startup
 
 ### Authentication Security
-- **JWT Token Strategy**: Standard JWT with configurable expiration
-- **Token Validation**: Middleware-based token verification with user context injection
-- **Authorization**: Role-based endpoint protection with configurable requirements
+- **Cognito JWT Strategy**: AWS Cognito User Pool JWT tokens with automatic validation
+- **Token Validation**: API Gateway built-in Cognito authorizer with Lambda context injection
+- **Authorization**: Cognito User Groups for role-based access control
 
 ### Data Privacy
 - **Design Choice**: Structured logging with data sanitization capabilities
@@ -188,21 +194,22 @@ InstitutionConfig(
 ## Integration Architecture
 
 ### Frontend Separation
-- **Design Choice**: Backend API service with separate frontend in `../chatbot-frontend`
+- **Design Choice**: Backend API service with separate React frontend
 - **Benefits**: Technology independence, scalability, deployment flexibility
 - **API Design**: RESTful endpoints with OpenAI compatibility for easy integration
+- **Deployment**: React app on S3 + CloudFront, API on Lambda + API Gateway
 
-### Infrastructure Integration
-- **Cloud Infrastructure**: Integration points with `../augmented-infra` 
-- **Container Orchestration**: Kubernetes-ready with proper health checks and service discovery
-- **CI/CD Integration**: Automated testing, building, and deployment workflows
+### AWS Serverless Integration
+- **Cloud Infrastructure**: Native AWS services (Lambda, API Gateway, Cognito, S3, CloudFront)
+- **Service Orchestration**: API Gateway routing, Lambda auto-scaling, CloudWatch monitoring
+- **CI/CD Integration**: AWS CodePipeline or GitHub Actions for serverless deployment workflows
 
 ## Future Architecture Considerations
 
 ### Database Migration Path
-- **Phase 6**: SQLite for persistence and analytics
-- **Benefits**: Query capabilities, backup/recovery, compliance support
-- **Migration Strategy**: Backward-compatible data models, migration scripts
+- **Phase 6**: DynamoDB for serverless persistence and analytics
+- **Benefits**: Serverless-native scaling, cost-effective storage, backup/recovery, compliance support
+- **Migration Strategy**: Backward-compatible data models, DynamoDB table creation scripts
 
 ### Multi-Modal Support
 - **Architecture**: Extensible message format for text, image, and other content types
