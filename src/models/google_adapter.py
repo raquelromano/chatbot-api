@@ -1,7 +1,7 @@
-import os
 from typing import Dict, Any, AsyncGenerator
 import httpx
 from .base import BaseModelAdapter, ChatRequest, ChatResponse, ChatMessage
+from ..config.settings import settings
 
 
 class GoogleAdapter(BaseModelAdapter):
@@ -10,10 +10,10 @@ class GoogleAdapter(BaseModelAdapter):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
 
-        # Get API key if specified
+        # Get API key from settings
         api_key = None
-        if config.get("api_key_env"):
-            api_key = os.getenv(config["api_key_env"])
+        if config.get("api_key_env") == "GOOGLE_API_KEY":
+            api_key = settings.google_api_key
 
         # Store API key for URL parameters (Gemini uses query param, not headers)
         self.api_key = api_key

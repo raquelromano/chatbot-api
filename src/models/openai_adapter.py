@@ -1,7 +1,7 @@
-import os
 from typing import Dict, Any, AsyncGenerator
 import httpx
 from .base import BaseModelAdapter, ChatRequest, ChatResponse, ChatMessage
+from ..config.settings import settings
 
 
 class OpenAIAdapter(BaseModelAdapter):
@@ -10,10 +10,11 @@ class OpenAIAdapter(BaseModelAdapter):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
         
-        # Get API key if specified
+        # Get API key from settings
         api_key = None
-        if config.get("api_key_env"):
-            api_key = os.getenv(config["api_key_env"])
+        api_key_env = config.get("api_key_env")
+        if api_key_env == "OPENAI_API_KEY":
+            api_key = settings.openai_api_key
         
         # Set up HTTP client
         headers = {"Content-Type": "application/json"}
