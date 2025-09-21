@@ -10,16 +10,15 @@ class GoogleAdapter(BaseModelAdapter):
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
 
-        # Get API key
+        # Get API key if specified
         api_key = None
         if config.get("api_key_env"):
             api_key = os.getenv(config["api_key_env"])
 
-        if not api_key:
-            raise ValueError("Google API key is required")
+        # Store API key for URL parameters (Gemini uses query param, not headers)
+        self.api_key = api_key
 
         # Set up HTTP client
-        self.api_key = api_key
         self.client = httpx.AsyncClient(
             base_url="https://generativelanguage.googleapis.com/v1beta",
             timeout=60.0
@@ -76,7 +75,10 @@ class GoogleAdapter(BaseModelAdapter):
         }
 
         # Make the API call
-        url = f"/models/{request.model_id}:generateContent?key={self.api_key}"
+        url = f"/models/{request.model_id}:generateContent"
+        if self.api_key:
+            url += f"?key={self.api_key}"
+
         response = await self.client.post(url, json=payload)
         response.raise_for_status()
 
@@ -128,7 +130,9 @@ class GoogleAdapter(BaseModelAdapter):
         }
 
         # Make the streaming API call
-        url = f"/models/{request.model_id}:streamGenerateContent?key={self.api_key}"
+        url = f"/models/{request.model_id}:streamGenerateContent"
+        if self.api_key:
+            url += f"?key={self.api_key}"
 
         async with self.client.stream("POST", url, json=payload) as response:
             response.raise_for_status()
@@ -152,7 +156,10 @@ class GoogleAdapter(BaseModelAdapter):
         """Check if the Gemini API is available."""
         try:
             # Use the models list endpoint to check availability
-            url = f"/models?key={self.api_key}"
+            url = "/models"
+            if self.api_key:
+                url += f"?key={self.api_key}"
+
             response = await self.client.get(url)
             return response.status_code == 200
         except Exception:

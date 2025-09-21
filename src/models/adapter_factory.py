@@ -52,13 +52,19 @@ class AdapterFactory:
             return None
             
         elif model_config.client_type == ClientType.GOOGLE:
-            adapter_config = {
-                "api_key_env": model_config.api_key_env
-            }
-            adapter = GoogleAdapter(adapter_config)
-            logger.info("Created Google adapter",
-                       model_id=model_id,
-                       provider=model_config.provider)
+            try:
+                adapter_config = {
+                    "api_key_env": model_config.api_key_env
+                }
+                adapter = GoogleAdapter(adapter_config)
+                logger.info("Created Google adapter",
+                           model_id=model_id,
+                           provider=model_config.provider)
+            except Exception as e:
+                logger.warning("Failed to create Google adapter",
+                             model_id=model_id,
+                             error=str(e))
+                return None
         
         else:
             logger.error("Unknown client type", 

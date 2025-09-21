@@ -1,5 +1,5 @@
 from typing import List, Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 
@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # API keys (optional for external models)
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
+    google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
     
     # Auth0 configuration (legacy)
     auth0_domain: Optional[str] = Field(default=None, env="AUTH0_DOMAIN")
@@ -46,11 +47,17 @@ class Settings(BaseSettings):
     enable_logging: bool = Field(default=True, env="ENABLE_LOGGING")
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     data_retention_days: int = Field(default=30, env="DATA_RETENTION_DAYS")
+
+    # AWS Lambda configuration (set automatically in Lambda)
+    aws_lambda_function_name: Optional[str] = Field(default=None, env="AWS_LAMBDA_FUNCTION_NAME")
+    aws_region: Optional[str] = Field(default=None, env="AWS_REGION")
     
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore"
+    )
 
 
 # Global settings instance
