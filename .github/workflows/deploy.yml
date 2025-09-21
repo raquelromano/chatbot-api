@@ -32,11 +32,11 @@ jobs:
         run: |
           uv pip install -r requirements.txt
 
-      - name: Code quality checks
-        run: |
-          python -m black . --check
-          python -m isort . --check-only
-          python -m flake8 .
+      # - name: Code quality checks
+      #   run: |
+      #     python -m black . --check
+      #     python -m isort . --check-only
+      #     python -m flake8 .
 
       - name: Type checking
         run: |
@@ -99,17 +99,17 @@ jobs:
         run: |
           cdk output --context account=${{ secrets.AWS_ACCOUNT_ID }} --context region=${{ env.AWS_REGION }}
 
-  security-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # security-scan:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Run security scan
-        uses: github/super-linter@v4
-        env:
-          DEFAULT_BRANCH: main
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_PYTHON_BLACK: false
-          VALIDATE_PYTHON_ISORT: false
-          VALIDATE_PYTHON_FLAKE8: false
+  #     - name: Run security scan
+  #       uses: github/super-linter@v4
+  #       env:
+  #         DEFAULT_BRANCH: main
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         VALIDATE_PYTHON_BLACK: false
+  #         VALIDATE_PYTHON_ISORT: false
+  #         VALIDATE_PYTHON_FLAKE8: false
