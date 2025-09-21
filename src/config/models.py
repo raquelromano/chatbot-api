@@ -105,7 +105,16 @@ class ModelRegistry:
                 client_type=ClientType.GOOGLE,
                 provider="Google",
                 api_key_env="GOOGLE_API_KEY",
-                max_tokens=2048,
+                max_tokens=8192,
+                context_length=2000000
+            ),
+            ModelConfig(
+                name="Gemini 2.5 Flash",
+                model_id="gemini-2.5-flash",
+                client_type=ClientType.GOOGLE,
+                provider="Google",
+                api_key_env="GOOGLE_API_KEY",
+                max_tokens=8192,
                 context_length=1000000
             )
         ]

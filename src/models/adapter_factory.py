@@ -6,6 +6,7 @@ import structlog
 from ..config.models import model_registry, ClientType
 from .base import BaseModelAdapter
 from .openai_adapter import OpenAIAdapter
+from .google_adapter import GoogleAdapter
 
 logger = structlog.get_logger()
 
@@ -51,8 +52,13 @@ class AdapterFactory:
             return None
             
         elif model_config.client_type == ClientType.GOOGLE:
-            logger.warning("Google adapter not yet implemented", model_id=model_id)
-            return None
+            adapter_config = {
+                "api_key_env": model_config.api_key_env
+            }
+            adapter = GoogleAdapter(adapter_config)
+            logger.info("Created Google adapter",
+                       model_id=model_id,
+                       provider=model_config.provider)
         
         else:
             logger.error("Unknown client type", 
