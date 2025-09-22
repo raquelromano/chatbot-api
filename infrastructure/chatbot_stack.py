@@ -22,9 +22,9 @@ from constructs import Construct
 class ChatbotStack(Stack):
     """CDK Stack for serverless chatbot API."""
 
-    def __init__(self, scope: Construct, construct_id: str, environment: str = "dev", **kwargs) -> None:
+    def __init__(self, scope: Construct, construct_id: str, deploy_environment: str = "dev", **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self.environment = environment
+        self.environment = deploy_environment
 
         # Create S3 bucket for static assets
         self.assets_bucket = s3.Bucket(

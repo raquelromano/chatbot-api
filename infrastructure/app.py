@@ -17,7 +17,7 @@ env = cdk.Environment(
 ChatbotStack(
     app,
     f"ChatbotApiStack-{environment}",
-    environment=environment,
+    deploy_environment=environment,
     env=env,
     description=f"Serverless chatbot API ({environment}) with Lambda, API Gateway, and Cognito"
 )

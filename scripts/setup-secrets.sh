@@ -4,7 +4,19 @@
 
 set -e
 
-echo "🔐 Setting up secrets in AWS Systems Manager Parameter Store..."
+# Disable AWS CLI pager to prevent interactive editor issues
+export AWS_PAGER=""
+
+# Get environment from command line argument or default to dev
+ENVIRONMENT=${1:-dev}
+
+if [ "$ENVIRONMENT" != "dev" ] && [ "$ENVIRONMENT" != "prod" ]; then
+    echo "❌ Invalid environment. Use 'dev' or 'prod'"
+    echo "Usage: $0 [dev|prod]"
+    exit 1
+fi
+
+echo "🔐 Setting up secrets in AWS Systems Manager Parameter Store for environment: $ENVIRONMENT"
 
 # Check if AWS CLI is configured
 if ! aws sts get-caller-identity &> /dev/null; then
