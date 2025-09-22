@@ -45,19 +45,24 @@ The application supports separate development and production environments.
 
 #### Development Environment
 
-1. **Configure AWS credentials:**
+1. **Install AWS CDK:**
+   ```bash
+   npm install -g aws-cdk
+   ```
+
+2. **Configure AWS credentials:**
    ```bash
    aws configure
    # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
    ```
 
-2. **Setup development secrets:**
+3. **Setup development secrets:**
    ```bash
    ./scripts/setup-secrets.sh dev
    # Update API keys in AWS Parameter Store for dev environment
    ```
 
-3. **Deploy to development:**
+4. **Deploy to development:**
    ```bash
    ./deploy.sh dev
    ```
