@@ -13,28 +13,31 @@ def load_parameters_from_ssm():
     try:
         ssm = boto3.client('ssm')
 
-        # Get all parameters for the chatbot API
+        # Get environment from Lambda environment variable
+        environment = os.getenv("ENVIRONMENT", "dev")
+
+        # Get all parameters for the chatbot API environment
         response = ssm.get_parameters_by_path(
-            Path='/chatbot-api',
+            Path=f'/chatbot-api/{environment}',
             Recursive=True,
             WithDecryption=True
         )
 
         # Map parameter names to environment variables
         param_mapping = {
-            '/chatbot-api/app-name': 'APP_NAME',
-            '/chatbot-api/debug': 'DEBUG',
-            '/chatbot-api/log-level': 'LOG_LEVEL',
-            '/chatbot-api/default-model': 'DEFAULT_MODEL',
-            '/chatbot-api/openai-api-key': 'OPENAI_API_KEY',
-            '/chatbot-api/anthropic-api-key': 'ANTHROPIC_API_KEY',
-            '/chatbot-api/jwt-secret-key': 'JWT_SECRET_KEY',
-            '/chatbot-api/jwt-algorithm': 'JWT_ALGORITHM',
-            '/chatbot-api/jwt-expiration-hours': 'JWT_EXPIRATION_HOURS',
-            '/chatbot-api/enable-auth': 'ENABLE_AUTH',
-            '/chatbot-api/auth-required-endpoints': 'AUTH_REQUIRED_ENDPOINTS',
-            '/chatbot-api/enable-logging': 'ENABLE_LOGGING',
-            '/chatbot-api/data-retention-days': 'DATA_RETENTION_DAYS',
+            f'/chatbot-api/{environment}/app-name': 'APP_NAME',
+            f'/chatbot-api/{environment}/debug': 'DEBUG',
+            f'/chatbot-api/{environment}/log-level': 'LOG_LEVEL',
+            f'/chatbot-api/{environment}/default-model': 'DEFAULT_MODEL',
+            f'/chatbot-api/{environment}/openai-api-key': 'OPENAI_API_KEY',
+            f'/chatbot-api/{environment}/anthropic-api-key': 'ANTHROPIC_API_KEY',
+            f'/chatbot-api/{environment}/jwt-secret-key': 'JWT_SECRET_KEY',
+            f'/chatbot-api/{environment}/jwt-algorithm': 'JWT_ALGORITHM',
+            f'/chatbot-api/{environment}/jwt-expiration-hours': 'JWT_EXPIRATION_HOURS',
+            f'/chatbot-api/{environment}/enable-auth': 'ENABLE_AUTH',
+            f'/chatbot-api/{environment}/auth-required-endpoints': 'AUTH_REQUIRED_ENDPOINTS',
+            f'/chatbot-api/{environment}/enable-logging': 'ENABLE_LOGGING',
+            f'/chatbot-api/{environment}/data-retention-days': 'DATA_RETENTION_DAYS',
         }
 
         # Set environment variables from parameters

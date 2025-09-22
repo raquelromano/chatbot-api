@@ -7,17 +7,19 @@ from chatbot_stack import ChatbotStack
 app = cdk.App()
 
 # Get environment and context
+environment = app.node.try_get_context("environment") or "dev"
 env = cdk.Environment(
     account=app.node.try_get_context("account"),
     region=app.node.try_get_context("region") or "us-east-1"
 )
 
-# Create the stack
+# Create the stack with environment-specific naming
 ChatbotStack(
     app,
-    "ChatbotApiStack",
+    f"ChatbotApiStack-{environment}",
+    environment=environment,
     env=env,
-    description="Serverless chatbot API with Lambda, API Gateway, and Cognito"
+    description=f"Serverless chatbot API ({environment}) with Lambda, API Gateway, and Cognito"
 )
 
 app.synth()

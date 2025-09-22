@@ -30,42 +30,44 @@ create_parameter() {
 
 # Application configuration
 echo "📋 Creating application configuration parameters..."
-create_parameter "/chatbot-api/app-name" "Chatbot API"
-create_parameter "/chatbot-api/debug" "false"
-create_parameter "/chatbot-api/log-level" "INFO"
+create_parameter "/chatbot-api/$ENVIRONMENT/app-name" "Chatbot API ($ENVIRONMENT)"
+create_parameter "/chatbot-api/$ENVIRONMENT/debug" "$([ "$ENVIRONMENT" = "dev" ] && echo "true" || echo "false")"
+create_parameter "/chatbot-api/$ENVIRONMENT/log-level" "$([ "$ENVIRONMENT" = "dev" ] && echo "DEBUG" || echo "INFO")"
 
 # Model configuration
 echo "🤖 Creating model configuration parameters..."
-create_parameter "/chatbot-api/default-model" "openai"
+create_parameter "/chatbot-api/$ENVIRONMENT/default-model" "openai"
 
 # API Keys (SecureString type for encryption)
 echo "🔑 Creating API key parameters..."
 echo "Note: You'll need to update these with your actual API keys"
-create_parameter "/chatbot-api/openai-api-key" "your-openai-api-key-here" "SecureString"
-create_parameter "/chatbot-api/anthropic-api-key" "your-anthropic-api-key-here" "SecureString"
+create_parameter "/chatbot-api/$ENVIRONMENT/openai-api-key" "your-openai-api-key-here" "SecureString"
+create_parameter "/chatbot-api/$ENVIRONMENT/anthropic-api-key" "your-anthropic-api-key-here" "SecureString"
 
 # JWT configuration
 echo "🎫 Creating JWT configuration parameters..."
-create_parameter "/chatbot-api/jwt-secret-key" "$(openssl rand -base64 32)" "SecureString"
-create_parameter "/chatbot-api/jwt-algorithm" "HS256"
-create_parameter "/chatbot-api/jwt-expiration-hours" "24"
+create_parameter "/chatbot-api/$ENVIRONMENT/jwt-secret-key" "$(openssl rand -base64 32)" "SecureString"
+create_parameter "/chatbot-api/$ENVIRONMENT/jwt-algorithm" "HS256"
+create_parameter "/chatbot-api/$ENVIRONMENT/jwt-expiration-hours" "24"
 
 # Authentication settings
 echo "🔒 Creating authentication configuration parameters..."
-create_parameter "/chatbot-api/enable-auth" "true"
-create_parameter "/chatbot-api/auth-required-endpoints" "/v1/chat/completions,/v1/models"
+create_parameter "/chatbot-api/$ENVIRONMENT/enable-auth" "true"
+create_parameter "/chatbot-api/$ENVIRONMENT/auth-required-endpoints" "/v1/chat/completions,/v1/models"
 
 # Data collection settings
 echo "📊 Creating data collection configuration parameters..."
-create_parameter "/chatbot-api/enable-logging" "true"
-create_parameter "/chatbot-api/data-retention-days" "30"
+create_parameter "/chatbot-api/$ENVIRONMENT/enable-logging" "true"
+create_parameter "/chatbot-api/$ENVIRONMENT/data-retention-days" "30"
 
-echo "✅ All parameters created successfully!"
+echo "✅ All parameters created successfully for environment: $ENVIRONMENT!"
 echo ""
 echo "🔧 Next steps:"
 echo "   1. Update the API key parameters with your actual keys:"
-echo "      aws ssm put-parameter --name '/chatbot-api/openai-api-key' --value 'your-actual-key' --type SecureString --overwrite"
+echo "      aws ssm put-parameter --name '/chatbot-api/$ENVIRONMENT/openai-api-key' --value 'your-actual-key' --type SecureString --overwrite"
 echo "   2. Configure Cognito parameters after CDK deployment"
 echo ""
-echo "📝 View all parameters:"
-echo "   aws ssm get-parameters-by-path --path '/chatbot-api' --recursive"
+echo "📝 View all parameters for this environment:"
+echo "   aws ssm get-parameters-by-path --path '/chatbot-api/$ENVIRONMENT' --recursive"
+echo ""
+echo "💡 Usage: ./scripts/setup-secrets.sh [dev|prod]  (defaults to dev)"

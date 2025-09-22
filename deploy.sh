@@ -4,7 +4,10 @@
 
 set -e  # Exit on any error
 
-echo "🚀 Starting Chatbot API deployment..."
+# Default environment
+ENVIRONMENT=${1:-dev}
+
+echo "🚀 Starting Chatbot API deployment for environment: $ENVIRONMENT..."
 
 # Check if CDK is installed
 if ! command -v cdk &> /dev/null; then
@@ -25,6 +28,7 @@ AWS_REGION=${AWS_REGION:-us-east-1}
 
 echo "📋 Deploying to AWS Account: $AWS_ACCOUNT_ID"
 echo "📍 Region: $AWS_REGION"
+echo "🏷️  Environment: $ENVIRONMENT"
 
 # Install Python dependencies for CDK
 echo "📦 Installing CDK dependencies..."
@@ -71,14 +75,14 @@ cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION || {
 
 # Synthesize CloudFormation template
 echo "🏗️  Synthesizing CloudFormation template..."
-cdk synth --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION || {
+cdk synth --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT || {
     echo "❌ CDK synthesis failed"
     exit 1
 }
 
 # Deploy the stack
 echo "🚀 Deploying to AWS..."
-cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --require-approval never || {
+cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT --require-approval never || {
     echo "❌ Deployment failed"
     exit 1
 }
@@ -86,10 +90,12 @@ cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --requ
 echo "✅ Deployment completed successfully!"
 echo ""
 echo "🔗 Your API endpoints:"
-cdk output --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION
+cdk output --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT
 
 echo ""
 echo "📚 Next steps:"
-echo "   1. Configure your API keys in AWS Systems Manager Parameter Store"
+echo "   1. Configure your API keys in AWS Systems Manager Parameter Store using: ./scripts/setup-secrets.sh $ENVIRONMENT"
 echo "   2. Test your API endpoints"
 echo "   3. Configure your frontend to use the new API URL"
+echo ""
+echo "💡 Usage: ./deploy.sh [dev|prod]  (defaults to dev)"

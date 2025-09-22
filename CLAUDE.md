@@ -164,11 +164,24 @@ The application is now **fully functional** for Phase 5 objectives with serverle
 - Secure secrets management via Parameter Store
 
 ### ⚠️ Configuration Required
-To deploy and use:
+
+**For Development Environment:**
 1. **AWS Setup**: Configure AWS credentials and account ID
-2. **Secrets**: Run `./scripts/setup-secrets.sh` and update API keys
-3. **Domain**: Configure custom domain in CDK stack (optional)
-4. **OAuth**: Configure OAuth providers in Cognito User Pool
+2. **Secrets**: Run `./scripts/setup-secrets.sh dev` and update API keys
+3. **Deploy**: Run `./deploy.sh dev`
+4. **OAuth**: Dev environment uses `http://localhost:3000` for OAuth callbacks
+
+**For Production Environment:**
+1. **Update Production URLs**: Edit `infrastructure/chatbot_stack.py` lines 320-321 and 330 to replace `your-domain.com` with your actual production domain
+2. **Secrets**: Run `./scripts/setup-secrets.sh prod` and update API keys
+3. **Deploy**: Run `./deploy.sh prod`
+4. **OAuth**: Configure production OAuth providers in Cognito User Pool
+
+**Environment Separation:**
+- **Resources**: Each environment gets separate Lambda functions, S3 buckets, Cognito pools
+- **Parameters**: Environment-specific Parameter Store paths (`/chatbot-api/dev/` vs `/chatbot-api/prod/`)
+- **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`)
+- **CORS**: Dev allows localhost, prod restricts to production domains
 
 ### 🔧 Development Tools
 - `run_server.py`: Local server startup with graceful shutdown
