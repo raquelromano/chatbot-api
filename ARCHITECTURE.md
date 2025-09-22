@@ -125,18 +125,18 @@ InstitutionConfig(
 ## Deployment Architecture
 
 ### AWS Serverless Strategy (Production)
-- **Design Choice**: AWS Lambda + API Gateway + Cognito + CloudFront serverless architecture
-- **Rationale**: Cost-effective for educational use cases, auto-scaling, no server management
-- **Implementation**: FastAPI with Mangum wrapper, CDK infrastructure as code, Cognito User Pools
-- **Benefits**: Pay-per-request pricing (~$2-6/month), automatic scaling, global distribution
+- **Design Choice**: AWS Lambda + API Gateway + Cognito + CloudFront serverless architecture with dev/prod environment separation
+- **Rationale**: Cost-effective for educational use cases, auto-scaling, no server management, isolated environments
+- **Implementation**: FastAPI with Mangum wrapper, CDK infrastructure as code, Cognito User Pools, environment-specific resource naming
+- **Benefits**: Pay-per-request pricing (~$2-6/month), automatic scaling, global distribution, safe deployment practices
 
 ### Complete Infrastructure Stack
-- **AWS Lambda**: FastAPI application with Mangum ASGI adapter
-- **API Gateway**: HTTP API with Cognito JWT authorizer for authentication
-- **Cognito User Pools**: OAuth authentication with multiple identity providers
+- **AWS Lambda**: FastAPI application with Mangum ASGI adapter (environment-specific function names)
+- **API Gateway**: HTTP API with Cognito JWT authorizer for authentication (environment-specific APIs)
+- **Cognito User Pools**: OAuth authentication with multiple identity providers (separate pools per environment)
 - **CloudFront**: Global CDN for edge caching and performance optimization
-- **S3**: Static asset storage with CloudFront integration
-- **Parameter Store**: Encrypted secrets and configuration management
+- **S3**: Static asset storage with CloudFront integration (environment-specific buckets)
+- **Parameter Store**: Encrypted secrets and configuration management (environment-specific paths: `/chatbot-api/{env}/`)
 - **CloudWatch**: Monitoring, logging, and alerting
 
 ### API Gateway Integration
@@ -152,16 +152,16 @@ InstitutionConfig(
 - **Benefits**: Native AWS monitoring, cost-effective health checks, auto-scaling compatibility
 
 ### Secrets Management Architecture
-- **Design Choice**: AWS Systems Manager Parameter Store for encrypted configuration
-- **Implementation**: Lambda function loads parameters at startup with IAM permissions
-- **Rationale**: Serverless-native secrets management, encrypted storage, cost-effective
-- **Benefits**: AWS-native security, automatic encryption, centralized configuration
+- **Design Choice**: AWS Systems Manager Parameter Store for encrypted configuration with environment separation
+- **Implementation**: Lambda function loads parameters at startup with IAM permissions, environment-specific parameter paths
+- **Rationale**: Serverless-native secrets management, encrypted storage, cost-effective, environment isolation
+- **Benefits**: AWS-native security, automatic encryption, centralized configuration, dev/prod separation
 
 ### CI/CD Pipeline Architecture
-- **Design Choice**: GitHub Actions with AWS CDK deployment
-- **Implementation**: Automated testing, code quality checks, CDK synthesis and deployment
-- **Rationale**: Version-controlled infrastructure, automated validation, consistent deployments
-- **Benefits**: Infrastructure as code, automated quality gates, rollback capabilities
+- **Design Choice**: GitHub Actions with AWS CDK deployment supporting multiple environments
+- **Implementation**: Automated testing, code quality checks, CDK synthesis and deployment with environment parameters
+- **Rationale**: Version-controlled infrastructure, automated validation, consistent deployments, environment-specific pipelines
+- **Benefits**: Infrastructure as code, automated quality gates, rollback capabilities, safe promotion workflows
 
 ## Security Architecture
 

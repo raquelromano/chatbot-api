@@ -41,23 +41,45 @@ A serverless chatbot API with adapter-based architecture that provides a unified
 
 ### AWS Deployment
 
+The application supports separate development and production environments.
+
+#### Development Environment
+
 1. **Configure AWS credentials:**
    ```bash
    aws configure
    # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
    ```
 
-2. **Setup secrets:**
+2. **Setup development secrets:**
    ```bash
-   ./scripts/setup-secrets.sh
-   # Update API keys in AWS Parameter Store
+   ./scripts/setup-secrets.sh dev
+   # Update API keys in AWS Parameter Store for dev environment
    ```
 
-3. **Deploy to AWS:**
+3. **Deploy to development:**
    ```bash
-   ./deploy.sh
-   # Or use GitHub Actions for CI/CD
+   ./deploy.sh dev
    ```
+
+#### Production Environment
+
+1. **Update production URLs** in `infrastructure/chatbot_stack.py`:
+   - Replace `your-domain.com` with your actual production domain (lines 320-321, 330)
+
+2. **Setup production secrets:**
+   ```bash
+   ./scripts/setup-secrets.sh prod
+   # Update API keys in AWS Parameter Store for prod environment
+   ```
+
+3. **Deploy to production:**
+   ```bash
+   ./deploy.sh prod
+   ```
+
+#### CI/CD with GitHub Actions
+Both environments can be deployed automatically via GitHub Actions workflows.
 
 ## Project Structure
 
@@ -309,8 +331,9 @@ curl http://localhost:8000/auth/profile \
 
 ## Deployment Architecture
 
-The application deploys as a serverless architecture on AWS:
+The application deploys as a serverless architecture on AWS with full dev/prod environment separation:
 
+**Infrastructure Components:**
 - **AWS Lambda**: FastAPI application with Mangum adapter
 - **API Gateway**: HTTP API with Cognito JWT authorization
 - **Cognito User Pools**: OAuth authentication with multiple providers
@@ -318,6 +341,13 @@ The application deploys as a serverless architecture on AWS:
 - **S3**: Static asset storage with secure access
 - **Parameter Store**: Encrypted secrets and configuration management
 - **CloudWatch**: Monitoring, logging, and alerting
+
+**Environment Separation:**
+- **Resources**: Each environment gets isolated Lambda functions, S3 buckets, Cognito pools
+- **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`, `chatbot-api-prod-lambda`)
+- **Configuration**: Environment-specific Parameter Store paths (`/chatbot-api/dev/`, `/chatbot-api/prod/`)
+- **Security**: Dev allows localhost CORS, prod restricts to production domains
+- **OAuth**: Dev uses `localhost:3000` callbacks, prod uses your production domain
 
 ## Project Status
 
