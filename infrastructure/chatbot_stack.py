@@ -171,7 +171,10 @@ class ChatbotStack(Stack):
             function_name=f"chatbot-api-{self.deploy_environment}",
             runtime=lambda_.Runtime.PYTHON_3_11,
             handler="lambda_handler.lambda_handler",
-            code=lambda_.Code.from_asset("../src"),
+            code=lambda_.Code.from_asset(
+                "..",
+                exclude=["cdk.out", "infrastructure", ".venv", ".git", ".github", "venv"]
+            ),
             timeout=Duration.seconds(30),
             memory_size=512,
             role=lambda_role,
