@@ -80,7 +80,7 @@ async def test_api_endpoints():
         # Test 5: Models list
         print("\n5. Testing models list...")
         try:
-            response = await client.get(f"{base_url}/api/v1/models")
+            response = await client.get(f"{base_url}/v1/models")
             print(f"   Status: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
@@ -106,7 +106,7 @@ async def test_api_endpoints():
             }
             
             response = await client.post(
-                f"{base_url}/api/v1/chat/completions",
+                f"{base_url}/v1/chat/completions",
                 json=chat_request,
                 timeout=10.0
             )
