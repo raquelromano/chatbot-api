@@ -43,7 +43,7 @@ class ModelRegistry:
     def _load_default_models(self):
         """Load default model configurations."""
         default_models = [
-            # Local vLLM models (OpenAI-compatible API)
+            # Local vLLM models (OpenAI-compatible API) - TEMPORARILY DISABLED
             ModelConfig(
                 name="Llama 3.1 8B Instruct",
                 model_id="meta-llama/Meta-Llama-3.1-8B-Instruct",
@@ -52,7 +52,8 @@ class ModelRegistry:
                 is_local=True,
                 api_base="http://localhost:8001/v1",
                 max_tokens=2048,
-                context_length=131072
+                context_length=131072,
+                enabled=False
             ),
             ModelConfig(
                 name="Mistral Nemo 12B",
@@ -62,10 +63,11 @@ class ModelRegistry:
                 is_local=True,
                 api_base="http://localhost:8001/v1",
                 max_tokens=2048,
-                context_length=128000
+                context_length=128000,
+                enabled=False
             ),
             
-            # OpenAI models
+            # OpenAI models - TEMPORARILY DISABLED
             ModelConfig(
                 name="GPT-3.5 Turbo",
                 model_id="gpt-3.5-turbo",
@@ -74,7 +76,8 @@ class ModelRegistry:
                 api_base="https://api.openai.com/v1",
                 api_key_env="OPENAI_API_KEY",
                 max_tokens=4096,
-                context_length=16385
+                context_length=16385,
+                enabled=False
             ),
             ModelConfig(
                 name="GPT-4o",
@@ -84,10 +87,11 @@ class ModelRegistry:
                 api_base="https://api.openai.com/v1",
                 api_key_env="OPENAI_API_KEY",
                 max_tokens=4096,
-                context_length=128000
+                context_length=128000,
+                enabled=False
             ),
             
-            # Anthropic models
+            # Anthropic models - TEMPORARILY DISABLED
             ModelConfig(
                 name="Claude 3.5 Sonnet",
                 model_id="claude-3-5-sonnet-20241022",
@@ -95,10 +99,13 @@ class ModelRegistry:
                 provider="Anthropic",
                 api_key_env="ANTHROPIC_API_KEY",
                 max_tokens=4096,
-                context_length=200000
+                context_length=200000,
+                enabled=False
             ),
             
-            # Google models
+            # Google models - ENABLED FOR TESTING
+            # Notee: Google's latest models are the 2.5 series (released March 2025)
+            # Current lineup: Gemini 2.5 Pro, Gemini 2.5 Flash
             ModelConfig(
                 name="Gemini 2.5 Pro",
                 model_id="gemini-2.5-pro",
@@ -106,7 +113,8 @@ class ModelRegistry:
                 provider="Google",
                 api_key_env="GOOGLE_API_KEY",
                 max_tokens=8192,
-                context_length=2000000
+                context_length=2000000,
+                enabled=True
             ),
             ModelConfig(
                 name="Gemini 2.5 Flash",
@@ -115,7 +123,8 @@ class ModelRegistry:
                 provider="Google",
                 api_key_env="GOOGLE_API_KEY",
                 max_tokens=8192,
-                context_length=1000000
+                context_length=1000000,
+                enabled=True
             )
         ]
         

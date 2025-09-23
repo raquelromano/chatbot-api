@@ -1,11 +1,19 @@
 from typing import Dict, Any, AsyncGenerator
 import httpx
+import logging
 from .base import BaseModelAdapter, ChatRequest, ChatResponse, ChatMessage
 from ..config.settings import settings
 
+logger = logging.getLogger(__name__)
+
 
 class GoogleAdapter(BaseModelAdapter):
-    """Adapter for Google Gemini API."""
+    """Adapter for Google Gemini API.
+
+    Note: Google's latest models are the 2.5 series (released March 2025):
+    - gemini-2.5-pro (flagship model, 2M token context)
+    - gemini-2.5-flash (fast model, 1M token context)
+    """
 
     def __init__(self, config: Dict[str, Any]):
         super().__init__(config)
@@ -84,15 +92,27 @@ class GoogleAdapter(BaseModelAdapter):
 
         data = response.json()
 
+        # Debug logging to understand the response structure
+        logger.debug(f"Gemini API response: {data}")
+
         # Extract response content
         if "candidates" not in data or not data["candidates"]:
+            logger.error(f"No candidates in response: {data}")
             raise ValueError("No response candidates from Gemini API")
 
         candidate = data["candidates"][0]
+        logger.debug(f"Candidate structure: {candidate}")
+
         if "content" not in candidate or "parts" not in candidate["content"]:
+            logger.error(f"Invalid candidate structure: {candidate}")
             raise ValueError("Invalid response format from Gemini API")
 
-        content = candidate["content"]["parts"][0]["text"]
+        parts = candidate["content"]["parts"]
+        if not parts or "text" not in parts[0]:
+            logger.error(f"No text in parts: {parts}")
+            raise ValueError("No text content in Gemini API response")
+
+        content = parts[0]["text"]
         finish_reason = candidate.get("finishReason", "STOP").lower()
 
         # Map Gemini finish reasons to OpenAI format
