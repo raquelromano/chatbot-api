@@ -77,7 +77,7 @@ cdk synth --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --conte
 
 # Deploy the stack
 echo "🚀 Deploying to AWS..."
-cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT --require-approval never || {
+cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT --require-approval never --outputs-file cdk-outputs.json || {
     echo "❌ Deployment failed"
     exit 1
 }
@@ -85,7 +85,11 @@ cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --cont
 echo "✅ Deployment completed successfully!"
 echo ""
 echo "🔗 Your API endpoints:"
-cdk output --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT
+if [ -f "cdk-outputs.json" ]; then
+    cat cdk-outputs.json
+else
+    echo "⚠️  Output file not found. You can check outputs in the AWS CloudFormation console."
+fi
 
 # Return to project root
 cd ..
