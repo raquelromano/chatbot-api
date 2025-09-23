@@ -170,16 +170,23 @@ class ChatbotStack(Stack):
             self,
             "ChatbotApiFunction",
             function_name=f"chatbot-api-{self.deploy_environment}",
-            runtime=lambda_.Runtime.PYTHON_3_11,
+            runtime=lambda_.Runtime.PYTHON_3_9,
             handler="lambda_handler.lambda_handler",
             code=lambda_.Code.from_asset(
                 "..",
+                bundling=cdk.BundlingOptions(
+                    image=lambda_.Runtime.PYTHON_3_9.bundling_image,
+                    command=[
+                        "bash", "-c",
+                        "pip install -r requirements.txt --target /asset-output && cp -r src/ lambda_handler.py requirements.txt /asset-output/"
+                    ],
+                ),
                 exclude=[
-                    "cdk.out", "infrastructure", ".venv", ".git", ".github", "venv",
-                    "README.md", "CLAUDE.md", "deploy.sh", "test_api.py", "run_server.py",
-                    "*.log", ".env*", ".DS_Store", "__pycache__", "*.pyc",
-                    ".pytest_cache", ".coverage", "node_modules", "dist", "build",
-                    "scripts"
+                    "infrastructure/cdk.out/*", "infrastructure/*", ".venv/*", ".git/*",
+                    ".github/*", "venv/*", "README.md", "CLAUDE.md", "deploy.sh",
+                    "test_api.py", "run_server.py", "*.log", ".env*", ".DS_Store",
+                    "__pycache__", "*.pyc", ".pytest_cache", ".coverage", "node_modules",
+                    "dist", "build", "scripts/*"
                 ]
             ),
             timeout=Duration.seconds(30),
