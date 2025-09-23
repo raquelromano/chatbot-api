@@ -103,16 +103,20 @@ class GoogleAdapter(BaseModelAdapter):
         candidate = data["candidates"][0]
         logger.debug(f"Candidate structure: {candidate}")
 
-        if "content" not in candidate or "parts" not in candidate["content"]:
+        if "content" not in candidate:
             logger.error(f"Invalid candidate structure: {candidate}")
             raise ValueError("Invalid response format from Gemini API")
 
-        parts = candidate["content"]["parts"]
-        if not parts or "text" not in parts[0]:
-            logger.error(f"No text in parts: {parts}")
-            raise ValueError("No text content in Gemini API response")
-
-        content = parts[0]["text"]
+        # Handle cases where parts field might be missing (e.g., MAX_TOKENS finish reason)
+        if "parts" not in candidate["content"]:
+            logger.warning(f"No parts in content, finish reason: {candidate.get('finishReason', 'UNKNOWN')}")
+            content = ""  # Empty content when no parts are returned
+        else:
+            parts = candidate["content"]["parts"]
+            if not parts or "text" not in parts[0]:
+                logger.error(f"No text in parts: {parts}")
+                raise ValueError("No text content in Gemini API response")
+            content = parts[0]["text"]
         finish_reason = candidate.get("finishReason", "STOP").lower()
 
         # Map Gemini finish reasons to OpenAI format
