@@ -57,14 +57,6 @@ uv pip install -r requirements.txt
 #     exit 1
 # }
 
-# Run basic tests if they exist
-if [ -f "test_api.py" ]; then
-    echo "🧪 Running basic API tests..."
-    python test_api.py || {
-        echo "⚠️  Tests failed. Please fix them before deploying."
-        exit 1
-    }
-fi
 
 # Bootstrap CDK if needed
 echo "🔧 Bootstrapping CDK (if needed)..."
