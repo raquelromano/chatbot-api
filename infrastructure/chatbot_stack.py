@@ -24,13 +24,13 @@ class ChatbotStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, deploy_environment: str = "dev", **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
-        self.environment = deploy_environment
+        self.deploy_environment = deploy_environment
 
         # Create S3 bucket for static assets
         self.assets_bucket = s3.Bucket(
             self,
             "AssetsBucket",
-            bucket_name=f"chatbot-api-{self.environment}-assets-{self.account}",
+            bucket_name=f"chatbot-api-{self.deploy_environment}-assets-{self.account}",
             versioned=True,
             encryption=s3.BucketEncryption.S3_MANAGED,
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
@@ -57,7 +57,7 @@ class ChatbotStack(Stack):
         user_pool = cognito.UserPool(
             self,
             "UserPool",
-            user_pool_name=f"chatbot-api-{self.environment}-users",
+            user_pool_name=f"chatbot-api-{self.deploy_environment}-users",
             sign_in_aliases=cognito.SignInAliases(
                 email=True,
                 username=True
@@ -78,14 +78,14 @@ class ChatbotStack(Stack):
         user_pool.add_domain(
             "Domain",
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix=f"chatbot-api-{self.environment}-{self.account}"
+                domain_prefix=f"chatbot-api-{self.deploy_environment}-{self.account}"
             )
         )
 
         # Create user pool client
         user_pool_client = user_pool.add_client(
             "WebClient",
-            user_pool_client_name=f"chatbot-{self.environment}-web-client",
+            user_pool_client_name=f"chatbot-{self.deploy_environment}-web-client",
             auth_flows=cognito.AuthFlow(
                 user_password=True,
                 user_srp=True,
@@ -149,7 +149,7 @@ class ChatbotStack(Stack):
                     "ssm:GetParametersByPath",
                 ],
                 resources=[
-                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/chatbot-api/{self.environment}/*"
+                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/chatbot-api/{self.deploy_environment}/*"
                 ],
             )
         )
@@ -158,10 +158,10 @@ class ChatbotStack(Stack):
         lambda_function = lambda_.Function(
             self,
             "ChatbotApiFunction",
-            function_name=f"chatbot-api-{self.environment}",
+            function_name=f"chatbot-api-{self.deploy_environment}",
             runtime=lambda_.Runtime.PYTHON_3_11,
             handler="lambda_handler.lambda_handler",
-            code=lambda_.Code.from_asset("../"),  # Package entire project
+            code=lambda_.Code.from_asset("../src"),
             timeout=Duration.seconds(30),
             memory_size=512,
             role=lambda_role,
@@ -174,8 +174,8 @@ class ChatbotStack(Stack):
                 "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
                 "COGNITO_CLIENT_ID": self.user_pool_client_id,
                 "COGNITO_REGION": self.region,
-                "AWS_LAMBDA_FUNCTION_NAME": f"chatbot-api-{self.environment}",  # Indicates Lambda env
-                "ENVIRONMENT": self.environment,
+                "AWS_LAMBDA_FUNCTION_NAME": f"chatbot-api-{self.deploy_environment}",  # Indicates Lambda env
+                "ENVIRONMENT": self.deploy_environment,
             },
             log_retention=logs.RetentionDays.ONE_WEEK,
         )
@@ -202,7 +202,7 @@ class ChatbotStack(Stack):
         api = apigwv2.HttpApi(
             self,
             "ChatbotHttpApi",
-            api_name=f"chatbot-api-{self.environment}",
+            api_name=f"chatbot-api-{self.deploy_environment}",
             description="Chatbot API with Lambda integration",
             cors_preflight=apigwv2.CorsPreflightOptions(
                 allow_origins=self._get_cors_origins(),
@@ -316,7 +316,7 @@ class ChatbotStack(Stack):
 
     def _get_oauth_urls(self, endpoint: str) -> list[str]:
         """Get environment-specific OAuth URLs."""
-        if self.environment == "prod":
+        if self.deploy_environment == "prod":
             # Replace with your production domain
             return [f"https://your-domain.com/{endpoint}"]
         else:
@@ -325,7 +325,7 @@ class ChatbotStack(Stack):
 
     def _get_cors_origins(self) -> list[str]:
         """Get environment-specific CORS origins."""
-        if self.environment == "prod":
+        if self.deploy_environment == "prod":
             # Replace with your production domains
             return ["https://your-domain.com"]
         else:
