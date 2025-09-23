@@ -10,6 +10,7 @@ from aws_cdk import (
     aws_lambda as lambda_,
     aws_apigatewayv2 as apigwv2,
     aws_apigatewayv2_integrations as integrations,
+    aws_apigatewayv2_authorizers as authorizers,
     aws_cognito as cognito,
     aws_logs as logs,
     aws_iam as iam,
@@ -187,7 +188,6 @@ class ChatbotStack(Stack):
                 "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
                 "COGNITO_CLIENT_ID": self.user_pool_client_id,
                 "COGNITO_REGION": self.region,
-                "AWS_LAMBDA_FUNCTION_NAME": f"chatbot-api-{self.deploy_environment}",  # Indicates Lambda env
                 "ENVIRONMENT": self.deploy_environment,
             },
             log_group=log_group,
@@ -197,18 +197,11 @@ class ChatbotStack(Stack):
 
     def _create_api_gateway(self) -> apigwv2.HttpApi:
         """Create API Gateway HTTP API."""
-        # Create Cognito authorizer
-        authorizer = apigwv2.CfnAuthorizer(
-            self,
+        # Create Cognito JWT authorizer
+        authorizer = authorizers.HttpJwtAuthorizer(
             "CognitoAuthorizer",
-            api_id="",  # Will be set after API creation
-            authorizer_type="JWT",
-            identity_source=["$request.header.Authorization"],
-            jwt_configuration=apigwv2.CfnAuthorizer.JWTConfigurationProperty(
-                audience=[self.user_pool_client_id],
-                issuer=f"https://cognito-idp.{self.region}.amazonaws.com/{self.user_pool.user_pool_id}"
-            ),
-            name="CognitoJwtAuthorizer",
+            jwt_audience=[self.user_pool_client_id],
+            jwt_issuer=f"https://cognito-idp.{self.region}.amazonaws.com/{self.user_pool.user_pool_id}"
         )
 
         # Create HTTP API
@@ -261,7 +254,7 @@ class ChatbotStack(Stack):
             path="/v1/{proxy+}",
             methods=[apigwv2.HttpMethod.ANY],
             integration=lambda_integration,
-            authorizer=apigwv2.HttpRouteAuthorizer.from_cfn_authorizer(authorizer),
+            authorizer=authorizer,
         )
 
         # Catch-all route for other paths
@@ -275,12 +268,6 @@ class ChatbotStack(Stack):
 
     def _create_cloudfront_distribution(self) -> cloudfront.Distribution:
         """Create CloudFront distribution for global edge caching."""
-        # Create origin access control for S3
-        origin_access_control = cloudfront.S3OriginAccessControl(
-            self,
-            "OAC",
-            description="OAC for chatbot API assets",
-        )
 
         # Create distribution
         distribution = cloudfront.Distribution(
@@ -298,9 +285,8 @@ class ChatbotStack(Stack):
             ),
             additional_behaviors={
                 "/static/*": cloudfront.BehaviorOptions(
-                    origin=origins.S3Origin(
-                        self.assets_bucket,
-                        origin_access_control=origin_access_control,
+                    origin=origins.S3BucketOrigin.with_origin_access_control(
+                        self.assets_bucket
                     ),
                     viewer_protocol_policy=cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                     cache_policy=cloudfront.CachePolicy.CACHING_OPTIMIZED,
