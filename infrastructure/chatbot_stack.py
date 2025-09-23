@@ -6,6 +6,7 @@ from aws_cdk import (
     Stack,
     Duration,
     CfnOutput,
+    RemovalPolicy,
     aws_lambda as lambda_,
     aws_apigatewayv2 as apigwv2,
     aws_apigatewayv2_integrations as integrations,
@@ -154,6 +155,15 @@ class ChatbotStack(Stack):
             )
         )
 
+        # Create log group for Lambda function
+        log_group = logs.LogGroup(
+            self,
+            "ChatbotApiLogGroup",
+            log_group_name=f"/aws/lambda/chatbot-api-{self.deploy_environment}",
+            retention=logs.RetentionDays.ONE_WEEK,
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
         # Create Lambda function
         lambda_function = lambda_.Function(
             self,
@@ -177,7 +187,7 @@ class ChatbotStack(Stack):
                 "AWS_LAMBDA_FUNCTION_NAME": f"chatbot-api-{self.deploy_environment}",  # Indicates Lambda env
                 "ENVIRONMENT": self.deploy_environment,
             },
-            log_retention=logs.RetentionDays.ONE_WEEK,
+            log_group=log_group,
         )
 
         return lambda_function
