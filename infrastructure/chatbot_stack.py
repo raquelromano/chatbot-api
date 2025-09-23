@@ -174,7 +174,13 @@ class ChatbotStack(Stack):
             handler="lambda_handler.lambda_handler",
             code=lambda_.Code.from_asset(
                 "..",
-                exclude=["cdk.out", "infrastructure", ".venv", ".git", ".github", "venv"]
+                exclude=[
+                    "cdk.out", "infrastructure", ".venv", ".git", ".github", "venv",
+                    "README.md", "CLAUDE.md", "deploy.sh", "test_api.py", "run_server.py",
+                    "*.log", ".env*", ".DS_Store", "__pycache__", "*.pyc",
+                    ".pytest_cache", ".coverage", "node_modules", "dist", "build",
+                    "scripts"
+                ]
             ),
             timeout=Duration.seconds(30),
             memory_size=512,

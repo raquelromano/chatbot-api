@@ -77,3 +77,6 @@ k8s/secrets/
 tmp/
 temp/
 .tmp/
+
+# CDK
+cdk.out/

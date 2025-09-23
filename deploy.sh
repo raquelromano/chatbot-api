@@ -58,6 +58,9 @@ uv pip install -r requirements.txt
 # }
 
 
+# Change to infrastructure directory for CDK commands
+cd infrastructure
+
 # Bootstrap CDK if needed
 echo "🔧 Bootstrapping CDK (if needed)..."
 cdk bootstrap aws://$AWS_ACCOUNT_ID/$AWS_REGION || {
@@ -83,6 +86,9 @@ echo "✅ Deployment completed successfully!"
 echo ""
 echo "🔗 Your API endpoints:"
 cdk output --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT
+
+# Return to project root
+cd ..
 
 echo ""
 echo "📚 Next steps:"
