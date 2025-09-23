@@ -291,46 +291,58 @@ The application provides OpenAI-compatible REST API endpoints:
 
 ### Example Usage
 
-#### Without Authentication
+#### Local Development (localhost:8000)
+
+**✅ Testable endpoints when `ENABLE_AUTH=false`:**
 ```bash
-# List available models
-curl http://localhost:8000/v1/models
-
-# Create a chat completion (when ENABLE_AUTH=false)
-curl -X POST http://localhost:8000/v1/chat/completions \
+# Core API functionality
+curl http://localhost:8000/v1/models                    # List available models
+curl http://localhost:8000/v1/chat/completions \        # Create chat completion
   -H "Content-Type: application/json" \
-  -d '{
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "model_id": "gpt-3.5-turbo",
-    "max_tokens": 150
-  }'
+  -d '{"messages": [{"role": "user", "content": "Hello!"}], "model_id": "gemini-2.5-flash"}'
 
-# Health check
-curl http://localhost:8000/health/
+# Health and status
+curl http://localhost:8000/health/                      # Comprehensive health check
+curl http://localhost:8000/                             # Basic service info
 ```
 
-#### With Authentication
+**⚠️ Limited auth endpoints when `ENABLE_AUTH=true` (no frontend):**
 ```bash
-# Check auth status
-curl http://localhost:8000/auth/status
+# Auth service status and configuration
+curl http://localhost:8000/auth/status                  # Check auth configuration
+curl http://localhost:8000/auth/institutions            # List educational institutions
+curl "http://localhost:8000/auth/login?redirect_uri=http://localhost:3000/callback"  # Generate OAuth URL
 
-# Get login URL (redirect user to this URL)
-curl "http://localhost:8000/auth/login?redirect_uri=http://localhost:8000/auth/callback"
+# ❌ Cannot complete full OAuth flow without frontend at localhost:3000
+# ❌ Cannot test: /auth/callback, /auth/profile, /auth/onboarding, /auth/logout
+```
 
-# Create authenticated chat completion (after getting JWT token)
-curl -X POST http://localhost:8000/v1/chat/completions \
+#### Dev/Prod Deployment (with frontend)
+
+**✅ Full authentication flow available:**
+```bash
+# Complete OAuth login flow (via frontend)
+curl "https://your-api-domain.com/auth/login?redirect_uri=https://your-frontend-domain.com/callback"
+
+# Authenticated API calls (after OAuth completion)
+curl -X POST https://your-api-domain.com/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   -d '{
     "messages": [{"role": "user", "content": "Hello!"}],
-    "model_id": "gpt-3.5-turbo",
+    "model_id": "gemini-2.5-flash",
     "max_tokens": 150
   }'
 
-# Get user profile
-curl http://localhost:8000/auth/profile \
+# User management
+curl https://your-api-domain.com/auth/profile \          # Get user profile
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
+curl -X POST https://your-api-domain.com/auth/onboarding \  # Complete user onboarding
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"role": "student", "institution_id": "example"}'
 ```
+
+**Note**: Full authentication testing requires both backend API and frontend application running, as OAuth callbacks are handled by the frontend at `localhost:3000` (dev) or your production domain (prod).
 
 
 
