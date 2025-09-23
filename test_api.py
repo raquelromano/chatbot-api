@@ -79,58 +79,86 @@ async def test_api_endpoints():
         
         # Test 5: Models list
         print("\n5. Testing models list...")
+        enabled_models = []
         try:
             response = await client.get(f"{base_url}/v1/models")
             print(f"   Status: {response.status_code}")
             if response.status_code == 200:
                 data = response.json()
                 models = data.get('data', [])
-                print(f"   Models configured: {len(models)}")
-                for model in models[:3]:  # Show first 3 models
-                    print(f"     - {model.get('id')} ({model.get('provider')})")
-                print("   ✅ Models list working")
+                enabled_models = models  # API only returns enabled models
+
+                print(f"   Available models: {len(enabled_models)}")
+                print(f"\n   🟢 ENABLED models (ready for chat completions):")
+                for model in enabled_models:
+                    print(f"     ✅ {model.get('id')} ({model.get('provider')})")
+
+                if len(enabled_models) == 0:
+                    print("     ⚠️  No models enabled - need API keys or local services")
+
+                print("\n   ✅ Models list working")
             else:
                 print("   ❌ Models list failed")
         except Exception as e:
             print(f"   ❌ Error: {e}")
         
-        # Test 6: Chat completion (will likely fail without model services)
-        print("\n6. Testing chat completion...")
-        try:
-            chat_request = {
-                "messages": [{"role": "user", "content": "Hello, this is a test"}],
-                "model_id": "gpt-3.5-turbo",
-                "max_tokens": 10,
-                "temperature": 0.7,
-                "stream": False
-            }
-            
-            response = await client.post(
-                f"{base_url}/v1/chat/completions",
-                json=chat_request,
-                timeout=10.0
-            )
-            print(f"   Status: {response.status_code}")
-            
-            if response.status_code == 200:
-                data = response.json()
-                print(f"   Model used: {data.get('model')}")
-                print("   ✅ Chat completion working")
-            elif response.status_code == 404:
-                print("   ⚠️  Model not found (expected without model services)")
-            elif response.status_code == 500:
-                print("   ⚠️  Server error (expected without model services)")
-            else:
-                print(f"   ❌ Unexpected status: {response.status_code}")
-                
-        except Exception as e:
-            print(f"   ⚠️  Error (expected without model services): {e}")
+        # Test 6: Chat completion tests
+        print("\n6. Testing chat completions...")
+
+        if enabled_models:
+            # Test each enabled model
+            for i, model in enumerate(enabled_models, 1):
+                model_id = model['id']
+                provider = model['provider']
+                print(f"\n   6.{i} Testing {model_id} ({provider})...")
+
+                try:
+                    chat_request = {
+                        "messages": [{"role": "user", "content": "Say 'Hello from API test!' in exactly those words."}],
+                        "model_id": model_id,
+                        "max_tokens": 50,
+                        "temperature": 0.1,
+                        "stream": False
+                    }
+
+                    response = await client.post(
+                        f"{base_url}/v1/chat/completions",
+                        json=chat_request,
+                        timeout=30.0
+                    )
+                    print(f"      Status: {response.status_code}")
+
+                    if response.status_code == 200:
+                        data = response.json()
+                        content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+                        print(f"      ✅ SUCCESS - Generated response: '{content[:80]}{'...' if len(content) > 80 else ''}'")
+                        if data.get('usage'):
+                            usage = data['usage']
+                            print(f"      Tokens used: {usage.get('total_tokens', 0)} total")
+                    elif response.status_code == 500:
+                        error_data = response.json() if response.headers.get('content-type', '').startswith('application/json') else {}
+                        print(f"      ❌ FAILED - Server error: {error_data.get('detail', 'Unknown error')}")
+                    elif response.status_code == 404:
+                        print("      ❌ FAILED - Model not found")
+                    else:
+                        print(f"      ❌ FAILED - Unexpected status: {response.status_code}")
+
+                except Exception as e:
+                    print(f"      ❌ FAILED - Error: {e}")
+        else:
+            print("\n   No enabled models found - add API keys to enable models")
+            print("   Example: Set GOOGLE_API_KEY environment variable for Gemini models")
         
         print("\n" + "=" * 50)
         print("🎉 API testing complete!")
-        print("\nNote: Some endpoints may show warnings/errors without")
-        print("actual model services (OpenAI API key, vLLM server, etc.)")
-        print("This is expected behavior.")
+        print(f"\nSummary:")
+        print(f"- 🟢 Enabled models tested: {len(enabled_models)}")
+        if enabled_models:
+            print("- Only enabled models are shown and tested")
+            print("- Enabled models should generate actual responses")
+        else:
+            print("- No models enabled - configure API keys to enable models")
+            print("- Disabled models (OpenAI, Anthropic, local vLLM) need credentials")
 
 
 async def main():
