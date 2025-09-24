@@ -2,6 +2,8 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Note**: CHeck the current date before running any web searches for which you want the latest information about  best practices, tools, or documentation, (eg. with `date +"%Y"` to get the current year).
+
 ## Project Overview
 
 Chatbot wrapper API with adapter-based architecture supporting multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers.
@@ -68,7 +70,7 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - `black . && isort . && flake8 . && mypy src/` - Code quality checks
 - `./deploy.sh` - Deploy to AWS Lambda using CDK with Docker containers
 - `./scripts/build-docker.sh` - Build and push Docker image to ECR
-- `./scripts/setup-secrets.sh` - Configure AWS Parameter Store secrets
+- Secrets are managed via AWS Secrets Manager (automatically configured by CDK)
 
 ## Implementation Guidelines
 
