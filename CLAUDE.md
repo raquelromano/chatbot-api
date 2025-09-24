@@ -19,7 +19,8 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ Updated README.md with setup instructions (including uv support)
 
 **Phase 2 - Core Model Adapters: ✅ COMPLETED**
-- ✅ OpenAI adapter implementation supporting OpenAI API, local vLLM models, and OpenAI-compatible providers
+- ✅ Google/Gemini adapter implementation with Gemini 2.5 Pro and 2.5 Flash models (ENABLED)
+- ✅ OpenAI adapter implementation supporting OpenAI API, local vLLM models, and OpenAI-compatible providers (DISABLED)
 - ✅ Model registry system for dynamic model configuration
 - ✅ Settings management with environment variable support
 - ✅ Unified chat completion interface across different model backends
@@ -102,10 +103,11 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
    - **Data Export**: S3 data lake integration for analytics and reporting
    - **Serverless Persistence**: Native AWS serverless database integration
 
-2. **Additional Model Providers** (Phase 7):
-   - **Anthropic Adapter** (`src/models/adapters/anthropic_adapter.py`): Claude model integration
-   - **Google Adapter** (`src/models/adapters/google_adapter.py`): Gemini model support
-   - **Enhanced Model Registry**: Provider-specific configurations and capability detection
+2. **Additional Model Providers** (Phase 7 - PARTIALLY COMPLETED):
+   - ✅ **Google Adapter** (`src/models/google_adapter.py`): Gemini 2.5 Pro and 2.5 Flash support (ENABLED)
+   - 🔄 **Anthropic Adapter**: Claude model integration (model configs exist, adapter implementation needed)
+   - 🔄 **Enable OpenAI Models**: Currently disabled, can be re-enabled if needed
+   - ✅ **Enhanced Model Registry**: Provider-specific configurations and capability detection
 
 3. **Enhanced Data Collection System** (Phase 8):
    - **Conversation Analytics**: Track usage patterns, model performance, user engagement
@@ -116,7 +118,8 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 ## Current Implementation Status
 
 ### Completed Components
-- ✅ **OpenAI Adapter** (`src/models/openai_adapter.py`): Supports OpenAI API, vLLM, and compatible providers
+- ✅ **Google Adapter** (`src/models/google_adapter.py`): Gemini 2.5 Pro and 2.5 Flash models (ENABLED)
+- ✅ **OpenAI Adapter** (`src/models/openai_adapter.py`): Supports OpenAI API, vLLM, and compatible providers (DISABLED)
 - ✅ **Model Configuration** (`src/config/models.py`): Centralized model registry with Pydantic validation
 - ✅ **Adapter Factory** (`src/models/adapter_factory.py`): Runtime adapter management and health checks
 - ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration with Cognito + Auth0 support

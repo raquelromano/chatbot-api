@@ -39,33 +39,70 @@ A serverless chatbot API with adapter-based architecture that provides a unified
    python test_api.py
    ```
 
-### AWS Deployment
+### AWS Deployment (Docker Container)
 
-The application supports separate development and production environments.
+The application uses **Docker containers** for AWS Lambda deployment, providing:
+- ✅ Exact Lambda runtime environment (Python 3.11)
+- ✅ Eliminates cross-platform dependency issues
+- ✅ Fast rebuilds with Docker layer caching
+- ✅ Industry standard container deployment
+
+#### Prerequisites
+```bash
+# Check Docker is running
+docker info
+
+# Check AWS credentials
+aws sts get-caller-identity
+
+# Install AWS CDK
+npm install -g aws-cdk
+```
 
 #### Development Environment
 
-1. **Install AWS CDK:**
-   ```bash
-   npm install -g aws-cdk
-   ```
-
-2. **Configure AWS credentials:**
+1. **Configure AWS credentials:**
    ```bash
    aws configure
    # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
    ```
 
-3. **Setup development secrets:**
+2. **Setup development secrets:**
    ```bash
    ./scripts/setup-secrets.sh dev
-   # Update API keys in AWS Parameter Store for dev environment
+
+   # Then update Google API key with your real value:
+   aws ssm put-parameter \
+     --name "/chatbot-api/dev/GOOGLE_API_KEY" \
+     --value "your-real-google-api-key-here" \
+     --overwrite
+
+   # Or update via AWS Console: Systems Manager > Parameter Store
+   # Note: Only Google API key is required (OpenAI/Anthropic models are disabled)
    ```
 
-4. **Deploy to development:**
+3. **Deploy to development:**
    ```bash
    ./deploy.sh dev
    ```
+
+   This automatically:
+   - Creates ECR repository (if needed)
+   - Builds and pushes Docker image
+   - Deploys Lambda function with container
+
+   **Local Testing** (same container as deployed):
+   ```bash
+   # Build image locally (after first deployment)
+   ./scripts/build-docker.sh dev
+
+   # Test same container locally
+   docker run -p 8000:8080 chatbot-api:dev
+   ```
+
+**First-time deployment:** 8-12 minutes (includes CDK bootstrap, infrastructure setup, ECR setup)
+**Subsequent deployments:** 3-5 minutes (Docker layer caching + CDK asset caching)
+**Code-only changes:** 2-3 minutes (only changed layers rebuild)
 
 #### Production Environment
 
@@ -75,10 +112,15 @@ The application supports separate development and production environments.
 2. **Setup production secrets:**
    ```bash
    ./scripts/setup-secrets.sh prod
-   # Update API keys in AWS Parameter Store for prod environment
+
+   # Then update Google API key with your real value:
+   aws ssm put-parameter \
+     --name "/chatbot-api/prod/GOOGLE_API_KEY" \
+     --value "your-real-google-api-key-here" \
+     --overwrite
    ```
 
-3. **Deploy to production:**
+3. **Deploy to production (includes Docker build):**
    ```bash
    ./deploy.sh prod
    ```
@@ -121,22 +163,28 @@ flake8 .                  # Lint code
 mypy src/                 # Type checking
 ```
 
-### Docker
+### Docker Deployment
 ```bash
-docker-compose up         # Start local development environment
-docker build -t chatbot-demo .  # Build application container
+./deploy.sh dev                   # Full deployment (creates ECR, builds/pushes image, deploys Lambda)
+./scripts/build-docker.sh dev    # Build and push Docker image only (after ECR exists)
+docker run -p 8000:8080 chatbot-api:dev  # Test same container locally that's deployed
+docker build -t chatbot-demo .   # Build local development container (different from deployed)
 ```
 
 ## Model Providers
 
-### Currently Supported
-- **OpenAI API**: Direct integration with OpenAI models (GPT-3.5, GPT-4, etc.)
-- **Local vLLM Models**: Local deployment of open-source models (Llama, Mistral, etc.) via vLLM's OpenAI-compatible server
-- **OpenAI-Compatible Providers**: Any provider that implements OpenAI-compatible endpoints
+### Currently Supported (ENABLED)
+- **Google Gemini**: Gemini 2.5 Pro and Gemini 2.5 Flash via Google AI API
+  - Requires `GOOGLE_API_KEY`
+  - 2M token context (Pro), 1M token context (Flash)
 
-### Planned Support
-- **Anthropic**: Claude models via Anthropic API
-- **Google**: Gemini models via Google AI API
+### Available but Disabled
+- **OpenAI API**: GPT-3.5, GPT-4, etc. (can be re-enabled in `src/config/models.py`)
+- **Local vLLM Models**: Llama, Mistral, etc. via OpenAI-compatible server
+- **OpenAI-Compatible Providers**: Any OpenAI-compatible endpoint
+
+### Partially Implemented
+- **Anthropic**: Model configs exist, but adapter implementation needed for Claude models
 
 ## Configuration
 
@@ -159,13 +207,16 @@ VLLM_HOST=localhost              # vLLM server host for local models
 VLLM_PORT=8001                   # vLLM server port for local models
 ```
 
-#### API Keys for External Model Providers
+#### API Keys for Model Providers
 ```bash
-# OpenAI API (required for OpenAI models)
-OPENAI_API_KEY=your_openai_key_here
+# Google API (required for Gemini models - CURRENTLY ENABLED)
+GOOGLE_API_KEY=your_google_api_key_here
 
-# Anthropic API (required for Claude models - planned)
-ANTHROPIC_API_KEY=your_anthropic_key_here
+# OpenAI API (optional - models currently disabled)
+# OPENAI_API_KEY=your_openai_key_here
+
+# Anthropic API (optional - no adapter implementation yet)
+# ANTHROPIC_API_KEY=your_anthropic_key_here
 ```
 
 ### Authentication Configuration
@@ -234,9 +285,10 @@ DEFAULT_MODEL=local
 VLLM_HOST=localhost
 VLLM_PORT=8001
 
-# API Keys (uncomment and configure as needed)
-# OPENAI_API_KEY=sk-your-openai-key-here
-# ANTHROPIC_API_KEY=your-anthropic-key-here
+# API Keys (configure as needed)
+GOOGLE_API_KEY=your-google-api-key-here
+# OPENAI_API_KEY=sk-your-openai-key-here  # Optional - models disabled
+# ANTHROPIC_API_KEY=your-anthropic-key-here  # Optional - no adapter yet
 
 # Authentication Configuration
 ENABLE_AUTH=true
@@ -351,7 +403,8 @@ curl -X POST https://your-api-domain.com/auth/onboarding \  # Complete user onbo
 The application deploys as a serverless architecture on AWS with full dev/prod environment separation:
 
 **Infrastructure Components:**
-- **AWS Lambda**: FastAPI application with Mangum adapter
+- **AWS Lambda**: FastAPI application with Mangum adapter (Docker container deployment)
+- **Amazon ECR**: Container registry for Docker images with automatic lifecycle management
 - **API Gateway**: HTTP API with Cognito JWT authorization
 - **Cognito User Pools**: OAuth authentication with multiple providers
 - **CloudFront**: Global CDN for edge caching and performance
@@ -371,9 +424,10 @@ The application deploys as a serverless architecture on AWS with full dev/prod e
 **✅ PRODUCTION READY** - Fully functional serverless API with enterprise authentication, global deployment, and CI/CD pipeline.
 
 ### Completed Features
-- ✅ Multi-provider model adapters (OpenAI, vLLM, compatible APIs)
+- ✅ Google Gemini model adapter (2.5 Pro and 2.5 Flash) - ENABLED
+- ✅ Multi-provider model adapters (OpenAI, vLLM, compatible APIs) - Available but disabled
 - ✅ AWS Cognito authentication with OAuth providers
-- ✅ Serverless AWS Lambda deployment with CDK
+- ✅ Serverless AWS Lambda deployment with Docker containers via CDK
 - ✅ Global edge caching via CloudFront
 - ✅ Secure secrets management via Parameter Store
 - ✅ Automated CI/CD with GitHub Actions
@@ -381,5 +435,5 @@ The application deploys as a serverless architecture on AWS with full dev/prod e
 
 ### Next Steps
 - 🔄 **Phase 6**: DynamoDB integration for persistent user storage
-- 🔄 **Phase 7**: Additional model providers (Anthropic, Google)
+- ✅ **Phase 7**: Google Gemini models (COMPLETED) - Anthropic adapter implementation still needed
 - 🔄 **Phase 8**: Enhanced analytics and usage tracking
