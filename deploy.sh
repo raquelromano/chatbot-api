@@ -42,10 +42,6 @@ echo "📋 Deploying to AWS Account: $AWS_ACCOUNT_ID"
 echo "📍 Region: $AWS_REGION"
 echo "🏷️  Environment: $ENVIRONMENT"
 
-# Build Docker image and push to ECR
-echo "🐳 Building Docker image and pushing to ECR..."
-./scripts/build-docker.sh $ENVIRONMENT
-
 # Install application dependencies for local development
 echo "📦 Installing application dependencies..."
 uv pip install -r requirements.txt
@@ -89,10 +85,33 @@ cdk synth --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --conte
     exit 1
 }
 
-# Deploy the stack
-echo "🚀 Deploying to AWS..."
+# Phase 1: Deploy ECR repository and basic infrastructure
+echo "🚀 Phase 1: Creating ECR repository and basic infrastructure..."
+# We need to create a minimal stack first that only includes ECR
+# For now, we'll create ECR manually, then deploy the full stack
+aws ecr describe-repositories --repository-names "chatbot-api-${ENVIRONMENT}" --region $AWS_REGION >/dev/null 2>&1 || {
+    echo "📦 Creating ECR repository..."
+    aws ecr create-repository --repository-name "chatbot-api-${ENVIRONMENT}" --region $AWS_REGION >/dev/null || {
+        echo "❌ Failed to create ECR repository"
+        exit 1
+    }
+}
+
+# Return to project root for Docker build
+cd ..
+
+# Phase 2: Build and push Docker image
+echo "🐳 Phase 2: Building Docker image and pushing to ECR..."
+./scripts/build-docker.sh $ENVIRONMENT || {
+    echo "❌ Docker build failed"
+    exit 1
+}
+
+# Phase 3: Deploy full stack with Lambda function
+echo "🚀 Phase 3: Deploying full stack with Lambda function..."
+cd infrastructure
 cdk deploy --context account=$AWS_ACCOUNT_ID --context region=$AWS_REGION --context environment=$ENVIRONMENT --require-approval never --outputs-file cdk-outputs.json || {
-    echo "❌ Deployment failed"
+    echo "❌ Full stack deployment failed"
     exit 1
 }
 

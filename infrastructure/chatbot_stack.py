@@ -195,17 +195,14 @@ class ChatbotStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Create Docker image Lambda function
+        # Create Docker image Lambda function using ECR image
         lambda_function = lambda_.DockerImageFunction(
             self,
             "ChatbotApiFunction",
             function_name=f"chatbot-api-{self.deploy_environment}",
-            code=lambda_.DockerImageCode.from_image_asset(
-                "..",  # Build from project root
-                file="Dockerfile",
-                build_args={
-                    "ENVIRONMENT": self.deploy_environment
-                }
+            code=lambda_.DockerImageCode.from_ecr(
+                repository=self.ecr_repository,
+                tag=self.deploy_environment,  # Use environment as tag
             ),
             timeout=Duration.seconds(30),
             memory_size=512,
