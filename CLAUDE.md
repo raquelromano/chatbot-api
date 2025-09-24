@@ -54,7 +54,7 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ AWS CDK infrastructure stack (Lambda, API Gateway, Cognito, CloudFront)
 - ✅ AWS Cognito User Pools integration with OAuth providers
 - ✅ API Gateway HTTP API with Cognito JWT authorizer
-- ✅ AWS Systems Manager Parameter Store for secrets management
+- ✅ AWS Secrets Manager for secure secrets management
 - ✅ GitHub Actions CI/CD pipeline for automated deployment
 - ✅ CloudFront distribution for global edge caching
 - ✅ IAM roles and security policies
@@ -97,7 +97,16 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 
 ## Next Steps (Phase 6+ Implementation)
 
-1. **Database Integration** (Phase 6 - Next Priority):
+1. **Simplified Magic Link Authentication** (Phase 6 - Next Priority):
+   - **Custom Magic Link System**: Replace Cognito passwordless with pure magic link implementation
+   - **Email Service Integration**: Direct AWS SES integration for sending magic links
+   - **Token Management**: DynamoDB-based token storage with expiration and cleanup
+   - **Simplified User Flow**: Remove institution-based routing, support any email domain
+   - **Rate Limiting**: Built-in abuse prevention and email throttling
+   - **Security Features**: CSRF protection, secure token generation, and validation
+   - **Benefits**: Simpler UX, reduced AWS costs, full control over auth flow
+
+2. **Database Integration** (Phase 7):
    - **DynamoDB Implementation**: Replace in-memory user storage with AWS DynamoDB
    - **Database Schema**: User profiles, sessions, chat history, and analytics tables
    - **Migration System**: DynamoDB table creation and schema management
@@ -105,13 +114,13 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
    - **Data Export**: S3 data lake integration for analytics and reporting
    - **Serverless Persistence**: Native AWS serverless database integration
 
-2. **Additional Model Providers** (Phase 7 - PARTIALLY COMPLETED):
+3. **Additional Model Providers** (Phase 8 - PARTIALLY COMPLETED):
    - ✅ **Google Adapter** (`src/models/google_adapter.py`): Gemini 2.5 Pro and 2.5 Flash support (ENABLED)
    - 🔄 **Anthropic Adapter**: Claude model integration (model configs exist, adapter implementation needed)
    - 🔄 **Enable OpenAI Models**: Currently disabled, can be re-enabled if needed
    - ✅ **Enhanced Model Registry**: Provider-specific configurations and capability detection
 
-3. **Enhanced Data Collection System** (Phase 8):
+4. **Enhanced Data Collection System** (Phase 9):
    - **Conversation Analytics**: Track usage patterns, model performance, user engagement
    - **Real-time Metrics**: API response times, error rates, user activity dashboards
    - **Data Analysis Tools**: Built-in analytics endpoints for team insights
@@ -138,7 +147,7 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ **AWS Infrastructure** (`infrastructure/`): Complete CDK stack for serverless deployment
   - ✅ **Lambda Handler** (`lambda_handler.py`): Mangum FastAPI wrapper with Parameter Store integration
   - ✅ **CDK Stack** (`infrastructure/chatbot_stack.py`): Lambda, API Gateway, Cognito, CloudFront, S3
-  - ✅ **Secrets Management** (`scripts/setup-secrets.sh`): AWS Parameter Store configuration
+  - ✅ **Secrets Management** (`scripts/setup-secrets.sh`): AWS Secrets Manager configuration
   - ✅ **CI/CD Pipeline** (`.github/workflows/deploy.yml`): Automated testing and deployment
 - ✅ **Testing Infrastructure** (`test_api.py`, `run_server.py`): Development and testing tools
 - ✅ **Deployment Tools** (`deploy.sh`, `requirements.txt`): Production deployment and dependency management
@@ -168,7 +177,7 @@ The application is now **fully functional** for Phase 5 objectives with serverle
 - Chat completions (streaming and non-streaming)
 - Error handling with structured logging
 - Global edge caching via CloudFront
-- Secure secrets management via Parameter Store
+- Secure secrets management via Secrets Manager
 
 ### ⚠️ Configuration Required
 
@@ -186,7 +195,7 @@ The application is now **fully functional** for Phase 5 objectives with serverle
 
 **Environment Separation:**
 - **Resources**: Each environment gets separate Lambda functions, S3 buckets, Cognito pools
-- **Parameters**: Environment-specific Parameter Store paths (`/chatbot-api/dev/` vs `/chatbot-api/prod/`)
+- **Secrets**: Environment-specific Secrets Manager paths (`/chatbot-api/dev/` vs `/chatbot-api/prod/`)
 - **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`)
 - **CORS**: Dev allows localhost, prod restricts to production domains
 
@@ -194,5 +203,5 @@ The application is now **fully functional** for Phase 5 objectives with serverle
 - `run_server.py`: Local server startup with graceful shutdown
 - `test_api.py`: Comprehensive API endpoint testing
 - `deploy.sh`: Production deployment with validation
-- `scripts/setup-secrets.sh`: AWS Parameter Store configuration
+- `scripts/setup-secrets.sh`: AWS Secrets Manager configuration
 - Interactive API documentation at `/docs` endpoint

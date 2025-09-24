@@ -52,6 +52,24 @@ class UserProfileResponse(BaseModel):
     institution: Optional[InstitutionConfig] = Field(None, description="Institution details if applicable")
 
 
+class PasswordlessLoginRequest(BaseModel):
+    """Request model for passwordless login initiation."""
+    email: str = Field(..., description="Email address for authentication")
+
+
+class PasswordlessLoginResponse(BaseModel):
+    """Response model for passwordless login initiation."""
+    message: str = Field(..., description="Success message")
+    session: str = Field(..., description="Session token for code verification")
+
+
+class PasswordlessVerifyRequest(BaseModel):
+    """Request model for passwordless code verification."""
+    email: str = Field(..., description="Email address")
+    session: str = Field(..., description="Session token from login initiation")
+    code: str = Field(..., description="Verification code from email")
+
+
 @router.get("/login", response_model=LoginResponse)
 async def login(
     redirect_uri: str = Query(..., description="Redirect URI after authentication"),
@@ -324,6 +342,69 @@ async def list_institutions():
         )
 
 
+@router.post("/passwordless/login", response_model=PasswordlessLoginResponse)
+async def passwordless_login(request: PasswordlessLoginRequest):
+    """Initiate passwordless authentication by sending a code to email."""
+    if not cognito_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Passwordless authentication requires Cognito"
+        )
+
+    try:
+        response = await cognito_client.send_passwordless_auth(request.email)
+
+        logger.info(f"Passwordless auth initiated for: {request.email}")
+
+        return PasswordlessLoginResponse(
+            message="Authentication code sent to your email",
+            session=response.get("Session", "")
+        )
+
+    except Exception as e:
+        logger.error(f"Passwordless login failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to send authentication code: {str(e)}"
+        )
+
+
+@router.post("/passwordless/verify", response_model=OnboardingResponse)
+async def passwordless_verify(request: PasswordlessVerifyRequest):
+    """Verify passwordless authentication code and complete login."""
+    if not cognito_client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Passwordless authentication requires Cognito"
+        )
+
+    try:
+        # Verify the code
+        token_response = await cognito_client.verify_passwordless_code(
+            request.email, request.session, request.code
+        )
+
+        # Get user info
+        user_info = await cognito_client.get_user_info(token_response.access_token)
+
+        # Create internal JWT
+        internal_jwt = cognito_client.create_internal_jwt(user_info)
+
+        logger.info(f"Passwordless auth completed for: {request.email}")
+
+        return OnboardingResponse(
+            user=user_info,
+            access_token=internal_jwt
+        )
+
+    except Exception as e:
+        logger.error(f"Passwordless verify failed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid verification code: {str(e)}"
+        )
+
+
 @router.get("/status")
 async def auth_status():
     """Get authentication service status."""
@@ -331,5 +412,6 @@ async def auth_status():
         "auth_enabled": settings.enable_auth,
         "auth_configured": get_auth_client() is not None,
         "auth_provider": "cognito" if cognito_client else "auth0" if auth0_client else None,
-        "protected_endpoints": settings.auth_required_endpoints
+        "protected_endpoints": settings.auth_required_endpoints,
+        "passwordless_enabled": cognito_client is not None
     }

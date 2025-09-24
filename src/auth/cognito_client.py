@@ -365,6 +365,89 @@ class CognitoClient:
         except ClientError as e:
             raise Exception(f"Failed to update user attributes: {e.response['Error']['Message']}")
 
+    async def send_passwordless_auth(self, email: str) -> Dict[str, Any]:
+        """Initiate passwordless authentication by sending a code to email."""
+        try:
+            response = self.cognito_client.admin_initiate_auth(
+                UserPoolId=self.user_pool_id,
+                ClientId=self.client_id,
+                AuthFlow='CUSTOM_AUTH',
+                AuthParameters={
+                    'USERNAME': email,
+                }
+            )
+            return response
+        except ClientError as e:
+            if e.response['Error']['Code'] == 'UserNotFoundException':
+                # Auto-create user if they don't exist
+                await self.create_passwordless_user(email)
+                # Retry auth initiation
+                response = self.cognito_client.admin_initiate_auth(
+                    UserPoolId=self.user_pool_id,
+                    ClientId=self.client_id,
+                    AuthFlow='CUSTOM_AUTH',
+                    AuthParameters={
+                        'USERNAME': email,
+                    }
+                )
+                return response
+            raise Exception(f"Failed to initiate passwordless auth: {e.response['Error']['Message']}")
+
+    async def verify_passwordless_code(self, email: str, session: str, code: str) -> TokenResponse:
+        """Verify the passwordless authentication code."""
+        try:
+            response = self.cognito_client.admin_respond_to_auth_challenge(
+                UserPoolId=self.user_pool_id,
+                ClientId=self.client_id,
+                ChallengeName='CUSTOM_CHALLENGE',
+                ChallengeResponses={
+                    'USERNAME': email,
+                    'ANSWER': code,
+                },
+                Session=session
+            )
+
+            if 'AuthenticationResult' in response:
+                auth_result = response['AuthenticationResult']
+                return TokenResponse(
+                    access_token=auth_result['AccessToken'],
+                    token_type='Bearer',
+                    expires_in=auth_result.get('ExpiresIn', 3600),
+                    refresh_token=auth_result.get('RefreshToken'),
+                    id_token=auth_result.get('IdToken')
+                )
+            else:
+                raise Exception("Authentication failed - no result returned")
+
+        except ClientError as e:
+            raise Exception(f"Failed to verify passwordless code: {e.response['Error']['Message']}")
+
+    async def create_passwordless_user(self, email: str) -> Dict[str, Any]:
+        """Create a new user for passwordless authentication."""
+        try:
+            response = self.cognito_client.admin_create_user(
+                UserPoolId=self.user_pool_id,
+                Username=email,
+                UserAttributes=[
+                    {"Name": "email", "Value": email},
+                    {"Name": "email_verified", "Value": "true"}
+                ],
+                MessageAction="SUPPRESS",  # Don't send welcome email
+                TemporaryPassword=secrets.token_urlsafe(16)  # Random temp password (unused)
+            )
+
+            # Set permanent password to bypass temporary password requirement
+            self.cognito_client.admin_set_user_password(
+                UserPoolId=self.user_pool_id,
+                Username=email,
+                Password=secrets.token_urlsafe(32),  # Random permanent password (unused)
+                Permanent=True
+            )
+
+            return response
+        except ClientError as e:
+            raise Exception(f"Failed to create passwordless user: {e.response['Error']['Message']}")
+
 
 # Global Cognito client instance
 cognito_client = CognitoClient() if all([settings.cognito_user_pool_id, settings.cognito_client_id]) else None

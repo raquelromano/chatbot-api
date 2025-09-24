@@ -99,6 +99,7 @@ class ChatbotStack(Stack):
             auth_flows=cognito.AuthFlow(
                 user_password=True,
                 user_srp=True,
+                custom=True,  # Enable custom authentication flows
             ),
             generate_secret=False,  # For web clients
             o_auth=cognito.OAuthSettings(
@@ -438,5 +439,12 @@ class ChatbotStack(Stack):
             "LambdaFunctionName",
             value=self.lambda_function.function_name,
             description="Lambda Function Name",
+        )
+
+        CfnOutput(
+            self,
+            "CognitoDomain",
+            value=f"chatbot-api-{self.deploy_environment}-{self.account}",
+            description="Cognito User Pool Domain Prefix",
         )
 

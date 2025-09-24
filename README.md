@@ -107,9 +107,63 @@ npm install -g aws-cdk
    ```bash
    ./deploy.sh dev
    ```
-   This automatically creates secrets in AWS Secrets Manager (with placeholder values).
+   This automatically creates secrets in AWS Secrets Manager (with placeholder values) and outputs your Cognito configuration.
 
-3. **Update API key with real value:**
+3. **Extract deployment values:**
+   Get the deployment's values for `UserPoolId`, `UserPoolClientId`, and `CognitoDomain` from infrastructure/cdk-outputs.json
+   ```bash
+   USER_POOL_ID=<user-pool-id>
+   USER_POOL_CLIENT_ID=<user-pool-client-id>
+   COGNITO_DOMAIN=<cognito-domain>
+   ```
+
+4. **Configure OAuth providers:**
+
+   **First, get your OAuth app credentials:**
+
+   **Google OAuth Setup:**
+   1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client
+   2. Set **Authorized redirect URIs** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   3. Copy your **Client ID** and **Client Secret**
+
+   **Microsoft OAuth Setup:**
+   1. Go to [Azure App Registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps) → New Registration
+   2. Set **Redirect URI** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   3. Copy your **Application (client) ID** and create a **Client Secret**
+
+   **GitHub OAuth Setup:**
+   1. Go to Settings → Developer settings → OAuth Apps → New OAuth App
+   2. Set **Authorization callback URL** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+   3. Copy your **Client ID** and **Client Secret**
+
+   **Then configure providers via AWS CLI:**
+   ```bash
+   # Configure Google OAuth provider
+   aws cognito-idp create-identity-provider \
+     --user-pool-id "$USER_POOL_ID" \
+     --provider-name "Google" \
+     --provider-type "Google" \
+     --provider-details '{
+       "client_id": "your-google-client-id.apps.googleusercontent.com",
+       "client_secret": "your-google-client-secret",
+       "authorize_scopes": "openid email profile"
+     }' \
+     --attribute-mapping '{
+       "email": "email",
+       "given_name": "given_name",
+       "family_name": "family_name"
+     }'
+
+   # Enable OAuth providers on your User Pool Client
+   aws cognito-idp update-user-pool-client \
+     --user-pool-id "$USER_POOL_ID" \
+     --client-id "$USER_POOL_CLIENT_ID" \
+     --supported-identity-providers "Google" "COGNITO" \
+     --callback-urls "http://localhost:3000/callback" \
+     --logout-urls "http://localhost:3000/logout"
+   ```
+
+5. **Update API key with real value:**
    ```bash
    # After deployment, update the Google API key:
    aws secretsmanager put-secret-value \
