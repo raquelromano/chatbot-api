@@ -10,34 +10,70 @@ A serverless chatbot API with adapter-based architecture that provides a unified
 
 ### Local Development
 
-1. **Install dependencies:**
+The project uses **two separate virtual environments**:
+- **Application Environment** (`.venv-app`): For running the chatbot API locally
+- **Infrastructure Environment** (`.venv-cdk`): For AWS CDK deployment commands
+
+1. **Setup Application Environment:**
    ```bash
    # Using uv (recommended)
    curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv venv && source .venv/bin/activate
+   uv venv .venv-app && source .venv-app/bin/activate
    uv pip install -r requirements.txt
 
    # Or using pip
-   python -m venv venv && source venv/bin/activate
+   python -m venv .venv-app && source .venv-app/bin/activate
    pip install -r requirements.txt
    ```
 
-2. **Configure environment:**
+2. **Setup CDK Environment (for deployment only):**
+   ```bash
+   # Using uv (recommended)
+   uv venv infrastructure/.venv-cdk && source infrastructure/.venv-cdk/bin/activate
+   uv pip install -r infrastructure/requirements.txt
+
+   # Or using pip
+   python -m venv infrastructure/.venv-cdk && source infrastructure/.venv-cdk/bin/activate
+   pip install -r infrastructure/requirements.txt
+   ```
+
+3. **Configure environment:**
    ```bash
    cp .env.example .env
    # Edit .env with your API keys and configuration
    ```
 
-3. **Run locally:**
+4. **Run locally (using Application Environment):**
    ```bash
+   source .venv-app/bin/activate    # Activate application environment
    python run_server.py
    # API docs: http://localhost:8000/docs
    ```
 
-4. **Test the API:**
+5. **Test the API:**
    ```bash
+   source .venv-app/bin/activate    # Activate application environment
    python test_api.py
    ```
+
+### Virtual Environment Management
+
+**For Local Development & Testing:**
+```bash
+source .venv-app/bin/activate      # Application environment
+python run_server.py              # Run API server
+python test_api.py                # Test API endpoints
+```
+
+**For AWS Deployment:**
+```bash
+source infrastructure/.venv-cdk/bin/activate   # CDK environment
+./deploy.sh dev                               # Deploy using separate environments
+```
+
+**Environment Contents:**
+- **`.venv-app`**: FastAPI, authentication, AWS SDK, model adapters, testing tools
+- **`.venv-cdk`**: AWS CDK libraries, deployment tools, infrastructure code
 
 ### AWS Deployment (Docker Container)
 
@@ -84,12 +120,7 @@ npm install -g aws-cdk
    # Note: Only Google API key is required (OpenAI/Anthropic models are disabled)
    ```
 
-4. **Verify deployment:**
-   ```bash
-   ./deploy.sh dev
-   ```
-
-   This automatically:
+The deployment automatically:
    - Creates ECR repository (if needed)
    - Builds and pushes Docker image
    - Deploys Lambda function with container
@@ -112,20 +143,18 @@ npm install -g aws-cdk
 1. **Update production URLs** in `infrastructure/chatbot_stack.py`:
    - Replace `your-domain.com` with your actual production domain (lines 320-321, 330)
 
-2. **Setup production secrets:**
-   ```bash
-   ./scripts/setup-secrets.sh prod
-
-   # Then update Google API key with your real value:
-   aws ssm put-parameter \
-     --name "/chatbot-api/prod/GOOGLE_API_KEY" \
-     --value "your-real-google-api-key-here" \
-     --overwrite
-   ```
-
-3. **Deploy to production (includes Docker build):**
+2. **Deploy to production:**
    ```bash
    ./deploy.sh prod
+   ```
+   This automatically creates secrets in AWS Secrets Manager.
+
+3. **Update API key with real value:**
+   ```bash
+   # After deployment, update the Google API key:
+   aws secretsmanager put-secret-value \
+     --secret-id "chatbot-api/prod/google-api-key" \
+     --secret-string '{"api_key":"your-real-google-api-key-here"}'
    ```
 
 #### CI/CD with GitHub Actions
@@ -153,25 +182,30 @@ chatbot-api/
 
 ### Testing
 ```bash
-pytest                    # Run all tests
-pytest tests/unit/        # Run unit tests only
-pytest tests/integration/ # Run integration tests only
+source .venv-app/bin/activate   # Activate application environment
+pytest                          # Run all tests
+pytest tests/unit/              # Run unit tests only
+pytest tests/integration/       # Run integration tests only
 ```
 
 ### Code Quality
 ```bash
-black .                   # Format code
-isort .                   # Sort imports
-flake8 .                  # Lint code
-mypy src/                 # Type checking
+source .venv-app/bin/activate   # Activate application environment
+black .                         # Format code
+isort .                         # Sort imports
+flake8 .                        # Lint code
+mypy src/                       # Type checking
 ```
 
 ### Docker Deployment
 ```bash
-./deploy.sh dev                   # Full deployment (creates ECR, builds/pushes image, deploys Lambda)
-./scripts/build-docker.sh dev    # Build and push Docker image only (after ECR exists)
-docker run -p 8000:8080 chatbot-api:dev  # Test same container locally that's deployed
-docker build -t chatbot-demo .   # Build local development container (different from deployed)
+source infrastructure/.venv-cdk/bin/activate   # Activate CDK environment
+./deploy.sh dev                                 # Full deployment (creates ECR, builds/pushes image, deploys Lambda)
+./scripts/build-docker.sh dev                  # Build and push Docker image only (after ECR exists)
+
+# Test deployed container locally (no venv needed for Docker)
+docker run -p 8000:8080 chatbot-api:dev        # Test same container locally that's deployed
+docker build -t chatbot-demo .                 # Build local development container (different from deployed)
 ```
 
 ## Model Providers
@@ -412,13 +446,13 @@ The application deploys as a serverless architecture on AWS with full dev/prod e
 - **Cognito User Pools**: OAuth authentication with multiple providers
 - **CloudFront**: Global CDN for edge caching and performance
 - **S3**: Static asset storage with secure access
-- **Parameter Store**: Encrypted secrets and configuration management
+- **Secrets Manager**: Encrypted secrets with automatic rotation support
 - **CloudWatch**: Monitoring, logging, and alerting
 
 **Environment Separation:**
 - **Resources**: Each environment gets isolated Lambda functions, S3 buckets, Cognito pools
 - **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`, `chatbot-api-prod-lambda`)
-- **Configuration**: Environment-specific Parameter Store paths (`/chatbot-api/dev/`, `/chatbot-api/prod/`)
+- **Configuration**: Environment-specific Secrets Manager paths (`chatbot-api/dev/`, `chatbot-api/prod/`)
 - **Security**: Dev allows localhost CORS, prod restricts to production domains
 - **OAuth**: Dev uses `localhost:3000` callbacks, prod uses your production domain
 
@@ -432,7 +466,7 @@ The application deploys as a serverless architecture on AWS with full dev/prod e
 - ✅ AWS Cognito authentication with OAuth providers
 - ✅ Serverless AWS Lambda deployment with Docker containers via CDK
 - ✅ Global edge caching via CloudFront
-- ✅ Secure secrets management via Parameter Store
+- ✅ Secure secrets management via Secrets Manager
 - ✅ Automated CI/CD with GitHub Actions
 - ✅ Health monitoring and structured logging
 

@@ -19,7 +19,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
-    aws_ecr as ecr,
+    aws_ecr_assets as ecr_assets,
     aws_secretsmanager as secretsmanager,
 )
 from constructs import Construct
@@ -49,8 +49,6 @@ class ChatbotStack(Stack):
         # Create Cognito User Pool
         self.user_pool = self._create_cognito_user_pool()
 
-        # Create ECR repository for container images
-        self.ecr_repository = self._create_ecr_repository()
 
         # Create Lambda function (container)
         self.lambda_function = self._create_lambda_function()
@@ -186,29 +184,6 @@ class ChatbotStack(Stack):
 
         return secrets
 
-    def _create_ecr_repository(self) -> ecr.Repository:
-        """Create ECR repository for container images."""
-        repository = ecr.Repository(
-            self,
-            "ChatbotEcrRepository",
-            repository_name=f"chatbot-api-{self.deploy_environment}",
-            image_scan_on_push=True,
-            lifecycle_rules=[{
-                "rulePriority": 1,
-                "description": "Keep last 5 images",
-                "selection": {
-                    "tagStatus": ecr.TagStatus.ANY,
-                    "countType": ecr.CountType.IMAGE_COUNT_MORE_THAN,
-                    "countNumber": 5
-                },
-                "action": {
-                    "type": ecr.LifecycleAction.EXPIRE
-                }
-            }],
-            removal_policy=RemovalPolicy.DESTROY,
-        )
-
-        return repository
 
     def _create_lambda_function(self) -> lambda_.DockerImageFunction:
         """Create Lambda function using container image."""
@@ -261,14 +236,17 @@ class ChatbotStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Create Docker image Lambda function using ECR image
+        # Create Docker image Lambda function using image asset
+        # Note: Explicitly specify platform to avoid architecture mismatch when building on ARM64 Macs
+        # for x86_64 Lambda deployment. This is a known CDK limitation.
+        # See: https://github.com/aws/aws-cdk/issues/31048, #18696, #12472
         lambda_function = lambda_.DockerImageFunction(
             self,
             "ChatbotApiFunction",
             function_name=f"chatbot-api-{self.deploy_environment}",
-            code=lambda_.DockerImageCode.from_ecr(
-                repository=self.ecr_repository,
-                tag=self.deploy_environment,  # Use environment as tag
+            code=lambda_.DockerImageCode.from_image_asset(
+                os.path.dirname(os.path.dirname(__file__)),  # Project root directory
+                platform=ecr_assets.Platform.LINUX_AMD64  # Force x86_64 for Lambda compatibility
             ),
             timeout=Duration.seconds(30),
             memory_size=512,
@@ -462,9 +440,3 @@ class ChatbotStack(Stack):
             description="Lambda Function Name",
         )
 
-        CfnOutput(
-            self,
-            "EcrRepositoryUri",
-            value=self.ecr_repository.repository_uri,
-            description="ECR Repository URI",
-        )

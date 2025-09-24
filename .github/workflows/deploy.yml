@@ -103,8 +103,7 @@ jobs:
             ENVIRONMENT="dev"
           fi
 
-          # Build Docker image and push to ECR
-          ./scripts/build-docker.sh $ENVIRONMENT
+          # CDK will handle Docker build/push automatically
 
       - name: CDK Bootstrap
         run: |

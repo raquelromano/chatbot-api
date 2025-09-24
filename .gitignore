@@ -22,11 +22,13 @@ wheels/
 MANIFEST
 .python-version
 
-# Virtual Environment
+# Virtual Environments
 venv/
 env/
 ENV/
 .venv/
+.venv-app/
+infrastructure/.venv-cdk/
 
 # Environment Variables
 .env
