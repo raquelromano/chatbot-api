@@ -1,6 +1,9 @@
+import os
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+
+from .secrets import get_api_key, get_jwt_secret
 
 
 class Settings(BaseSettings):
@@ -17,7 +20,7 @@ class Settings(BaseSettings):
     vllm_host: str = Field(default="localhost", env="VLLM_HOST")
     vllm_port: int = Field(default=8001, env="VLLM_PORT")
     
-    # API keys (optional for external models)
+    # API keys (loaded from Secrets Manager in AWS, environment variables locally)
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     anthropic_api_key: Optional[str] = Field(default=None, env="ANTHROPIC_API_KEY")
     google_api_key: Optional[str] = Field(default=None, env="GOOGLE_API_KEY")
@@ -58,6 +61,38 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore"
     )
+
+    def load_secrets_from_aws(self) -> None:
+        """Load secrets from AWS Secrets Manager when running in Lambda."""
+        # Check if we're running in AWS Lambda
+        if not os.getenv("AWS_LAMBDA_FUNCTION_NAME"):
+            return  # Running locally, use environment variables
+
+        environment = os.getenv("ENVIRONMENT", "dev")
+        aws_region = os.getenv("AWS_REGION", "us-east-1")
+
+        # Load Google API key (currently enabled)
+        if not self.google_api_key:
+            google_key = get_api_key("google", region_name=aws_region, environment=environment)
+            if google_key:
+                self.google_api_key = google_key
+
+        # Load JWT secret
+        if self.jwt_secret_key == "development-key-change-in-production":
+            jwt_secret = get_jwt_secret(region_name=aws_region, environment=environment)
+            if jwt_secret:
+                self.jwt_secret_key = jwt_secret
+
+        # Commented out - uncomment when OpenAI/Anthropic adapters are enabled
+        # if not self.openai_api_key:
+        #     openai_key = get_api_key("openai", region_name=aws_region, environment=environment)
+        #     if openai_key:
+        #         self.openai_api_key = openai_key
+
+        # if not self.anthropic_api_key:
+        #     anthropic_key = get_api_key("anthropic", region_name=aws_region, environment=environment)
+        #     if anthropic_key:
+        #         self.anthropic_api_key = anthropic_key
 
 
 # Global settings instance

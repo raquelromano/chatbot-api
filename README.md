@@ -67,21 +67,24 @@ npm install -g aws-cdk
    # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
    ```
 
-2. **Setup development secrets:**
+2. **Deploy to development:**
    ```bash
-   ./scripts/setup-secrets.sh dev
+   ./deploy.sh dev
+   ```
+   This automatically creates secrets in AWS Secrets Manager (with placeholder values).
 
-   # Then update Google API key with your real value:
-   aws ssm put-parameter \
-     --name "/chatbot-api/dev/GOOGLE_API_KEY" \
-     --value "your-real-google-api-key-here" \
-     --overwrite
+3. **Update API key with real value:**
+   ```bash
+   # After deployment, update the Google API key:
+   aws secretsmanager put-secret-value \
+     --secret-id "chatbot-api/dev/google-api-key" \
+     --secret-string '{"api_key":"your-real-google-api-key-here"}'
 
-   # Or update via AWS Console: Systems Manager > Parameter Store
+   # Or update via AWS Console: Secrets Manager
    # Note: Only Google API key is required (OpenAI/Anthropic models are disabled)
    ```
 
-3. **Deploy to development:**
+4. **Verify deployment:**
    ```bash
    ./deploy.sh dev
    ```

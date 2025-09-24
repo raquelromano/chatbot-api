@@ -20,6 +20,7 @@ from aws_cdk import (
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_ecr as ecr,
+    aws_secretsmanager as secretsmanager,
 )
 from constructs import Construct
 
@@ -41,6 +42,9 @@ class ChatbotStack(Stack):
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             removal_policy=cdk.RemovalPolicy.DESTROY,  # For dev/test
         )
+
+        # Create secrets in AWS Secrets Manager
+        self.secrets = self._create_secrets()
 
         # Create Cognito User Pool
         self.user_pool = self._create_cognito_user_pool()
@@ -119,6 +123,69 @@ class ChatbotStack(Stack):
 
         return user_pool
 
+    def _create_secrets(self) -> Dict[str, secretsmanager.Secret]:
+        """Create secrets in AWS Secrets Manager."""
+        secrets = {}
+
+        # Google API Key (currently enabled)
+        secrets['google_api_key'] = secretsmanager.Secret(
+            self,
+            "GoogleApiKey",
+            secret_name=f"chatbot-api/{self.deploy_environment}/google-api-key",
+            description="Google API Key for chatbot service",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template='{"api_key":""}',
+                generate_string_key="api_key",
+                exclude_characters=' "%@\\'
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # JWT Secret
+        secrets['jwt_secret'] = secretsmanager.Secret(
+            self,
+            "JwtSecret",
+            secret_name=f"chatbot-api/{self.deploy_environment}/jwt-secret",
+            description="JWT Secret Key for authentication",
+            generate_secret_string=secretsmanager.SecretStringGenerator(
+                secret_string_template='{"secret":""}',
+                generate_string_key="secret",
+                password_length=32,
+                exclude_characters=' "%@\\',
+                include_space=False,
+            ),
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        # Commented out - uncomment when needed
+        # secrets['openai_api_key'] = secretsmanager.Secret(
+        #     self,
+        #     "OpenAiApiKey",
+        #     secret_name=f"chatbot-api/{self.deploy_environment}/openai-api-key",
+        #     description="OpenAI API Key for chatbot service",
+        #     generate_secret_string=secretsmanager.SecretStringGenerator(
+        #         secret_string_template='{"api_key":""}',
+        #         generate_string_key="api_key",
+        #         exclude_characters=' "%@\\'
+        #     ),
+        #     removal_policy=RemovalPolicy.DESTROY,
+        # )
+
+        # secrets['anthropic_api_key'] = secretsmanager.Secret(
+        #     self,
+        #     "AnthropicApiKey",
+        #     secret_name=f"chatbot-api/{self.deploy_environment}/anthropic-api-key",
+        #     description="Anthropic API Key for chatbot service",
+        #     generate_secret_string=secretsmanager.SecretStringGenerator(
+        #         secret_string_template='{"api_key":""}',
+        #         generate_string_key="api_key",
+        #         exclude_characters=' "%@\\'
+        #     ),
+        #     removal_policy=RemovalPolicy.DESTROY,
+        # )
+
+        return secrets
+
     def _create_ecr_repository(self) -> ecr.Repository:
         """Create ECR repository for container images."""
         repository = ecr.Repository(
@@ -171,17 +238,16 @@ class ChatbotStack(Stack):
             )
         )
 
-        # Add permissions for Systems Manager Parameter Store
+        # Add permissions for AWS Secrets Manager
         lambda_role.add_to_policy(
             iam.PolicyStatement(
                 effect=iam.Effect.ALLOW,
                 actions=[
-                    "ssm:GetParameter",
-                    "ssm:GetParameters",
-                    "ssm:GetParametersByPath",
+                    "secretsmanager:GetSecretValue",
+                    "secretsmanager:DescribeSecret",
                 ],
                 resources=[
-                    f"arn:aws:ssm:{self.region}:{self.account}:parameter/chatbot-api/{self.deploy_environment}/*"
+                    f"arn:aws:secretsmanager:{self.region}:{self.account}:secret:chatbot-api/{self.deploy_environment}/*-??????"
                 ],
             )
         )
