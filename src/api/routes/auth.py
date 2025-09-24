@@ -21,7 +21,7 @@ from ...auth.models import (
 from ...config.settings import settings
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(tags=["authentication"])
 
 
 def get_auth_client():
