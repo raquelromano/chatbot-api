@@ -55,6 +55,7 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ GitHub Actions CI/CD pipeline for automated deployment
 - ✅ CloudFront distribution for global edge caching
 - ✅ IAM roles and security policies
+- ✅ **Docker Container Deployment** - Replaced Lambda layers with container images
 
 
 ## Development Commands
@@ -64,7 +65,8 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - `python test_api.py` - Test API endpoints
 - `uv pip install -r requirements.txt` - Install dependencies
 - `black . && isort . && flake8 . && mypy src/` - Code quality checks
-- `./deploy.sh` - Deploy to AWS Lambda using CDK
+- `./deploy.sh` - Deploy to AWS Lambda using CDK with Docker containers
+- `./scripts/build-docker.sh` - Build and push Docker image to ECR
 - `./scripts/setup-secrets.sh` - Configure AWS Parameter Store secrets
 
 ## Implementation Guidelines

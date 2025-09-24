@@ -87,17 +87,52 @@ jobs:
           uv pip install -r requirements.txt
           cd infrastructure && uv pip install -r requirements.txt && cd ..
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        run: |
+          # Determine environment based on branch
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          else
+            ENVIRONMENT="dev"
+          fi
+
+          # Build Docker image and push to ECR
+          ./scripts/build-docker.sh $ENVIRONMENT
+
       - name: CDK Bootstrap
         run: |
           cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ env.AWS_REGION }}
 
       - name: CDK Deploy
         run: |
-          cdk deploy --context account=${{ secrets.AWS_ACCOUNT_ID }} --context region=${{ env.AWS_REGION }} --require-approval never
+          # Determine environment based on branch
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          else
+            ENVIRONMENT="dev"
+          fi
+
+          cd infrastructure
+          cdk deploy --context account=${{ secrets.AWS_ACCOUNT_ID }} --context region=${{ env.AWS_REGION }} --context environment=$ENVIRONMENT --require-approval never
 
       - name: Get deployment outputs
         run: |
-          cdk output --context account=${{ secrets.AWS_ACCOUNT_ID }} --context region=${{ env.AWS_REGION }}
+          # Determine environment based on branch
+          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            ENVIRONMENT="prod"
+          else
+            ENVIRONMENT="dev"
+          fi
+
+          cd infrastructure
+          cdk output --context account=${{ secrets.AWS_ACCOUNT_ID }} --context region=${{ env.AWS_REGION }} --context environment=$ENVIRONMENT
 
   # security-scan:
   #   runs-on: ubuntu-latest
