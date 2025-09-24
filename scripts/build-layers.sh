@@ -51,7 +51,7 @@ build_dependencies_layer() {
 
     # Install dependencies to layer directory
     echo "📦 Installing Python dependencies..."
-    uv pip install -r "$PROJECT_ROOT/requirements.txt" --target "$layer_dir/python" --upgrade
+    pip install -r "$PROJECT_ROOT/requirements.txt" --target "$layer_dir/python" --upgrade --platform manylinux2014_x86_64 --implementation cp --python-version 3.11 --only-binary=:all:
 
     # Remove unnecessary files to reduce layer size
     echo "🧹 Cleaning up unnecessary files..."

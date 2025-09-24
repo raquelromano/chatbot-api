@@ -80,3 +80,8 @@ temp/
 
 # CDK
 cdk.out/
+layers/
+infrastructure/cdk-outputs.json
+infrastructure/package-lock.json
+
+
