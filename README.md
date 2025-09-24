@@ -107,63 +107,9 @@ npm install -g aws-cdk
    ```bash
    ./deploy.sh dev
    ```
-   This automatically creates secrets in AWS Secrets Manager (with placeholder values) and outputs your Cognito configuration.
+   This automatically creates secrets in AWS Secrets Manager (with placeholder values) and sets up passwordless email authentication via Cognito.
 
-3. **Extract deployment values:**
-   Get the deployment's values for `UserPoolId`, `UserPoolClientId`, and `CognitoDomain` from infrastructure/cdk-outputs.json
-   ```bash
-   USER_POOL_ID=<user-pool-id>
-   USER_POOL_CLIENT_ID=<user-pool-client-id>
-   COGNITO_DOMAIN=<cognito-domain>
-   ```
-
-4. **Configure OAuth providers:**
-
-   **First, get your OAuth app credentials:**
-
-   **Google OAuth Setup:**
-   1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client
-   2. Set **Authorized redirect URIs** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-   3. Copy your **Client ID** and **Client Secret**
-
-   **Microsoft OAuth Setup:**
-   1. Go to [Azure App Registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps) → New Registration
-   2. Set **Redirect URI** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-   3. Copy your **Application (client) ID** and create a **Client Secret**
-
-   **GitHub OAuth Setup:**
-   1. Go to Settings → Developer settings → OAuth Apps → New OAuth App
-   2. Set **Authorization callback URL** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-   3. Copy your **Client ID** and **Client Secret**
-
-   **Then configure providers via AWS CLI:**
-   ```bash
-   # Configure Google OAuth provider
-   aws cognito-idp create-identity-provider \
-     --user-pool-id "$USER_POOL_ID" \
-     --provider-name "Google" \
-     --provider-type "Google" \
-     --provider-details '{
-       "client_id": "your-google-client-id.apps.googleusercontent.com",
-       "client_secret": "your-google-client-secret",
-       "authorize_scopes": "openid email profile"
-     }' \
-     --attribute-mapping '{
-       "email": "email",
-       "given_name": "given_name",
-       "family_name": "family_name"
-     }'
-
-   # Enable OAuth providers on your User Pool Client
-   aws cognito-idp update-user-pool-client \
-     --user-pool-id "$USER_POOL_ID" \
-     --client-id "$USER_POOL_CLIENT_ID" \
-     --supported-identity-providers "Google" "COGNITO" \
-     --callback-urls "http://localhost:3000/callback" \
-     --logout-urls "http://localhost:3000/logout"
-   ```
-
-5. **Update API key with real value:**
+3. **Update API key with real value:**
    ```bash
    # After deployment, update the Google API key:
    aws secretsmanager put-secret-value \
@@ -173,6 +119,69 @@ npm install -g aws-cdk
    # Or update via AWS Console: Secrets Manager
    # Note: Only Google API key is required (OpenAI/Anthropic models are disabled)
    ```
+
+**That's it!** The application now uses **passwordless authentication** with email verification codes, so no OAuth provider setup is needed.
+
+**Optional: OAuth Provider Setup** (if you want to add OAuth login options):
+
+<details>
+<summary>Click to expand OAuth configuration steps</summary>
+
+**Extract deployment values:**
+Get the deployment's values for `UserPoolId`, `UserPoolClientId`, and `CognitoDomain` from infrastructure/cdk-outputs.json
+```bash
+USER_POOL_ID=<user-pool-id>
+USER_POOL_CLIENT_ID=<user-pool-client-id>
+COGNITO_DOMAIN=<cognito-domain>
+```
+
+**Configure OAuth providers:**
+
+**First, get your OAuth app credentials:**
+
+**Google OAuth Setup:**
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client
+2. Set **Authorized redirect URIs** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+3. Copy your **Client ID** and **Client Secret**
+
+**Microsoft OAuth Setup:**
+1. Go to [Azure App Registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps) → New Registration
+2. Set **Redirect URI** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+3. Copy your **Application (client) ID** and create a **Client Secret**
+
+**GitHub OAuth Setup:**
+1. Go to Settings → Developer settings → OAuth Apps → New OAuth App
+2. Set **Authorization callback URL** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+3. Copy your **Client ID** and **Client Secret**
+
+**Then configure providers via AWS CLI:**
+```bash
+# Configure Google OAuth provider
+aws cognito-idp create-identity-provider \
+  --user-pool-id "$USER_POOL_ID" \
+  --provider-name "Google" \
+  --provider-type "Google" \
+  --provider-details '{
+    "client_id": "your-google-client-id.apps.googleusercontent.com",
+    "client_secret": "your-google-client-secret",
+    "authorize_scopes": "openid email profile"
+  }' \
+  --attribute-mapping '{
+    "email": "email",
+    "given_name": "given_name",
+    "family_name": "family_name"
+  }'
+
+# Enable OAuth providers on your User Pool Client
+aws cognito-idp update-user-pool-client \
+  --user-pool-id "$USER_POOL_ID" \
+  --client-id "$USER_POOL_CLIENT_ID" \
+  --supported-identity-providers "Google" "COGNITO" \
+  --callback-urls "http://localhost:3000/callback" \
+  --logout-urls "http://localhost:3000/logout"
+```
+
+</details>
 
 The deployment automatically:
    - Creates ECR repository (if needed)
@@ -449,25 +458,67 @@ curl http://localhost:8000/health/                      # Comprehensive health c
 curl http://localhost:8000/                             # Basic service info
 ```
 
-**⚠️ Limited auth endpoints when `ENABLE_AUTH=true` (no frontend):**
+**✅ Passwordless authentication when `ENABLE_AUTH=true`:**
 ```bash
+# 1. Request verification code (sent to email)
+curl -X POST http://localhost:8000/auth/passwordless/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@example.com"}'
+
+# Returns: {"message": "Code sent", "session": "SESSION_TOKEN"}
+
+# 2. Verify code and get JWT token
+curl -X POST http://localhost:8000/auth/passwordless/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-email@example.com",
+    "session": "SESSION_TOKEN_FROM_STEP1",
+    "code": "123456"
+  }'
+
+# Returns: {"access_token": "JWT_TOKEN", "user": {...}}
+
+# 3. Use JWT for authenticated requests
+curl -X POST http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer JWT_TOKEN" \
+  -d '{"messages": [{"role": "user", "content": "Hello!"}], "model_id": "gemini-2.5-flash"}'
+
 # Auth service status and configuration
 curl http://localhost:8000/auth/status                  # Check auth configuration
 curl http://localhost:8000/auth/institutions            # List educational institutions
-curl "http://localhost:8000/auth/login?redirect_uri=http://localhost:3000/callback"  # Generate OAuth URL
-
-# ❌ Cannot complete full OAuth flow without frontend at localhost:3000
-# ❌ Cannot test: /auth/callback, /auth/profile, /auth/onboarding, /auth/logout
 ```
 
-#### Dev/Prod Deployment (with frontend)
+**📧 Finding Verification Codes:**
+- **Development**: Codes are logged to CloudWatch when email sending fails
+- **Production**: Codes sent via email (requires SES domain setup)
 
-**✅ Full authentication flow available:**
+#### Dev/Prod Deployment (AWS)
+
+**✅ Passwordless authentication flow:**
 ```bash
-# Complete OAuth login flow (via frontend)
-curl "https://your-api-domain.com/auth/login?redirect_uri=https://your-frontend-domain.com/callback"
+# 1. Request verification code
+curl -X POST https://your-api-domain.com/auth/passwordless/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "your-email@example.com"}'
 
-# Authenticated API calls (after OAuth completion)
+# 2. Get verification code from CloudWatch logs (development)
+aws logs filter-log-events \
+  --log-group-name "/aws/lambda/chatbot-api-dev-create-auth" \
+  --filter-pattern "Verification code for your-email@example.com" \
+  --no-cli-pager \
+  --output text
+
+# 3. Verify code and get JWT token
+curl -X POST https://your-api-domain.com/auth/passwordless/verify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "your-email@example.com",
+    "session": "SESSION_TOKEN",
+    "code": "123456"
+  }'
+
+# 4. Use JWT for authenticated API calls
 curl -X POST https://your-api-domain.com/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_JWT_TOKEN" \
@@ -476,13 +527,16 @@ curl -X POST https://your-api-domain.com/v1/chat/completions \
     "model_id": "gemini-2.5-flash",
     "max_tokens": 150
   }'
+```
 
-# User management
-curl https://your-api-domain.com/auth/profile \          # Get user profile
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
-curl -X POST https://your-api-domain.com/auth/onboarding \  # Complete user onboarding
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{"role": "student", "institution_id": "example"}'
+**📧 CloudWatch Log Access:**
+```bash
+# View recent verification codes (development)
+aws logs filter-log-events \
+  --log-group-name "/aws/lambda/chatbot-api-dev-create-auth" \
+  --start-time $(date -d '10 minutes ago' +%s)000
+
+# Or view in AWS Console: CloudWatch → Log Groups → /aws/lambda/chatbot-api-dev-create-auth
 ```
 
 **Note**: Full authentication testing requires both backend API and frontend application running, as OAuth callbacks are handled by the frontend at `localhost:3000` (dev) or your production domain (prod).

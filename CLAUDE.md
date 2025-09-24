@@ -59,6 +59,7 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - ✅ CloudFront distribution for global edge caching
 - ✅ IAM roles and security policies
 - ✅ **Docker Container Deployment** - Replaced Lambda layers with container images
+- ✅ **Passwordless Authentication** - Cognito custom auth lambda triggers with email verification codes
 
 
 ## Development Commands
@@ -83,17 +84,35 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 
 ## Authentication Implementation
 
-**Current Status**: AWS Cognito User Pools with Auth0 fallback support for educational pilot
+**Current Status**: AWS Cognito User Pools with **Passwordless Authentication** (email verification codes)
+
+**Passwordless Authentication Flow**:
+- **POST /auth/passwordless/login**: Send verification code to email
+- **POST /auth/passwordless/verify**: Verify code and get JWT token
+- **Custom Lambda Triggers**: Handle code generation, email sending, and verification
+- **CloudWatch Logging**: Verification codes logged for development/testing
+- **SES Integration**: Ready for production email sending (requires domain verification)
 
 **Key Components**:
 - **Auth Models** (`src/auth/models.py`): User, session, and institution data structures
-- **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito OAuth flows + institution registry
+- **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito passwordless auth flows
 - **Auth0 Client** (`src/auth/auth0_client.py`): Legacy Auth0 support (fallback)
 - **JWT Middleware** (`src/auth/middleware.py`): Token validation for both providers
-- **Auth Endpoints** (`src/auth/auth.py`): Login, callback, onboarding, profile management
+- **Auth Endpoints** (`src/auth/auth.py`): Passwordless login/verify + OAuth endpoints
 - **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
+- **Lambda Triggers** (`infrastructure/chatbot_stack.py`): Custom auth challenge handlers
 
-**Supported Methods**: Google, Microsoft, SAML, GitHub, Individual accounts via Cognito Hosted UI
+**Current Setup (Development)**:
+- ✅ Passwordless email authentication with 6-digit codes
+- ✅ Automatic user creation for new email addresses
+- ✅ Verification codes logged to CloudWatch for testing
+- ⚠️ **SES Email Setup**: Codes logged to CloudWatch (email sending fails gracefully)
+
+**Production Setup Required**:
+- 🔄 **SES Domain Verification**: Set up verified domain for production email sending
+- 🔄 **Update From Email**: Replace `noreply@chatbot-api.com` with verified domain
+
+**Legacy Methods**: Google, Microsoft, SAML, GitHub OAuth via Cognito Hosted UI (optional)
 
 ## Next Steps (Phase 6+ Implementation)
 

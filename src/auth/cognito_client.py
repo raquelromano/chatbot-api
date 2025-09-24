@@ -425,9 +425,15 @@ class CognitoClient:
     async def create_passwordless_user(self, email: str) -> Dict[str, Any]:
         """Create a new user for passwordless authentication."""
         try:
+            # Generate internal username from email hash (never exposed to user)
+            # User pool has email aliases enabled, so username cannot be email format
+            # Users always authenticate with their email, this username is purely internal
+            import hashlib
+            username = f"user_{hashlib.sha256(email.encode()).hexdigest()[:12]}"
+
             response = self.cognito_client.admin_create_user(
                 UserPoolId=self.user_pool_id,
-                Username=email,
+                Username=username,
                 UserAttributes=[
                     {"Name": "email", "Value": email},
                     {"Name": "email_verified", "Value": "true"}
@@ -439,7 +445,7 @@ class CognitoClient:
             # Set permanent password to bypass temporary password requirement
             self.cognito_client.admin_set_user_password(
                 UserPoolId=self.user_pool_id,
-                Username=email,
+                Username=username,  # Use the generated username, not email
                 Password=secrets.token_urlsafe(32),  # Random permanent password (unused)
                 Permanent=True
             )
