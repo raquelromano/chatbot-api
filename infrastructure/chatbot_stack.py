@@ -1,6 +1,8 @@
 """CDK Stack for Chatbot API infrastructure."""
 
-from typing import Dict, Any
+from typing import Dict, Any, Optional
+import os
+import hashlib
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
@@ -41,6 +43,9 @@ class ChatbotStack(Stack):
 
         # Create Cognito User Pool
         self.user_pool = self._create_cognito_user_pool()
+
+        # Create Lambda layers
+        self.layers = self._create_lambda_layers()
 
         # Create Lambda function
         self.lambda_function = self._create_lambda_function()
@@ -113,6 +118,76 @@ class ChatbotStack(Stack):
 
         return user_pool
 
+    def _create_lambda_layers(self) -> Dict[str, lambda_.LayerVersion]:
+        """Create Lambda layers for dependencies and application code."""
+        layers = {}
+
+        # Get the layers directory path
+        layers_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "layers")
+
+        # Create dependencies layer
+        dependencies_layer = self._create_dependencies_layer(layers_dir)
+        if dependencies_layer:
+            layers["dependencies"] = dependencies_layer
+
+        # Create application layer
+        application_layer = self._create_application_layer(layers_dir)
+        if application_layer:
+            layers["application"] = application_layer
+
+        return layers
+
+    def _create_dependencies_layer(self, layers_dir: str) -> Optional[lambda_.LayerVersion]:
+        """Create Lambda layer for Python dependencies."""
+        # Check for dependencies hash file
+        hash_file = os.path.join(layers_dir, "dependencies-hash.txt")
+        if not os.path.exists(hash_file):
+            print("⚠️  No dependencies hash found. Run 'scripts/build-layers.sh' first.")
+            return None
+
+        # Read the dependencies hash
+        with open(hash_file, 'r') as f:
+            deps_hash = f.read().strip()
+
+        # Check for dependencies layer zip
+        layer_zip = os.path.join(layers_dir, f"dependencies-layer-{deps_hash}.zip")
+        if not os.path.exists(layer_zip):
+            print(f"⚠️  Dependencies layer not found: {layer_zip}")
+            return None
+
+        # Create layer version
+        layer = lambda_.LayerVersion(
+            self,
+            "DependenciesLayer",
+            layer_version_name=f"chatbot-{self.deploy_environment}-deps-{deps_hash[:8]}",
+            code=lambda_.Code.from_asset(layer_zip),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_11],
+            description=f"Python dependencies for chatbot API - hash: {deps_hash[:12]}",
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        return layer
+
+    def _create_application_layer(self, layers_dir: str) -> Optional[lambda_.LayerVersion]:
+        """Create Lambda layer for application code."""
+        layer_zip = os.path.join(layers_dir, "application-layer.zip")
+        if not os.path.exists(layer_zip):
+            print(f"⚠️  Application layer not found: {layer_zip}")
+            return None
+
+        # Create layer version
+        layer = lambda_.LayerVersion(
+            self,
+            "ApplicationLayer",
+            layer_version_name=f"chatbot-{self.deploy_environment}-app",
+            code=lambda_.Code.from_asset(layer_zip),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_11],
+            description="Application source code for chatbot API",
+            removal_policy=RemovalPolicy.DESTROY,
+        )
+
+        return layer
+
     def _create_lambda_function(self) -> lambda_.Function:
         """Create Lambda function for the API."""
         # Create execution role
@@ -165,46 +240,89 @@ class ChatbotStack(Stack):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-        # Create Lambda function
-        lambda_function = lambda_.Function(
-            self,
-            "ChatbotApiFunction",
-            function_name=f"chatbot-api-{self.deploy_environment}",
-            runtime=lambda_.Runtime.PYTHON_3_9,
-            handler="lambda_handler.lambda_handler",
-            code=lambda_.Code.from_asset(
-                "..",
-                bundling=cdk.BundlingOptions(
-                    image=lambda_.Runtime.PYTHON_3_9.bundling_image,
-                    command=[
-                        "bash", "-c",
-                        "pip install -r requirements.txt --target /asset-output && cp -r src/ lambda_handler.py requirements.txt /asset-output/"
-                    ],
+        # Prepare layers for Lambda function
+        function_layers = []
+        if "dependencies" in self.layers:
+            function_layers.append(self.layers["dependencies"])
+        if "application" in self.layers:
+            function_layers.append(self.layers["application"])
+
+        # Create Lambda function with layers (if available) or fallback to bundling
+        if function_layers:
+            # Use layers - minimal code bundling
+            lambda_function = lambda_.Function(
+                self,
+                "ChatbotApiFunction",
+                function_name=f"chatbot-api-{self.deploy_environment}",
+                runtime=lambda_.Runtime.PYTHON_3_11,
+                handler="lambda_handler.lambda_handler",
+                code=lambda_.Code.from_inline(
+                    """
+# Minimal handler - actual code is in application layer
+import sys
+sys.path.insert(0, '/opt/python')
+from lambda_handler import lambda_handler
+                    """
                 ),
-                exclude=[
-                    "infrastructure/cdk.out/*", "infrastructure/*", ".venv/*", ".git/*",
-                    ".github/*", "venv/*", "README.md", "CLAUDE.md", "deploy.sh",
-                    "test_api.py", "run_server.py", "*.log", ".env*", ".DS_Store",
-                    "__pycache__", "*.pyc", ".pytest_cache", ".coverage", "node_modules",
-                    "dist", "build", "scripts/*"
-                ]
-            ),
-            timeout=Duration.seconds(30),
-            memory_size=512,
-            role=lambda_role,
-            environment={
-                "DEBUG": "false",
-                "LOG_LEVEL": "INFO",
-                "APP_NAME": "Chatbot API",
-                "HOST": "0.0.0.0",
-                "PORT": "8000",
-                "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
-                "COGNITO_CLIENT_ID": self.user_pool_client_id,
-                "COGNITO_REGION": self.region,
-                "ENVIRONMENT": self.deploy_environment,
-            },
-            log_group=log_group,
-        )
+                layers=function_layers,
+                timeout=Duration.seconds(30),
+                memory_size=512,
+                role=lambda_role,
+                environment={
+                    "DEBUG": "false",
+                    "LOG_LEVEL": "INFO",
+                    "APP_NAME": "Chatbot API",
+                    "HOST": "0.0.0.0",
+                    "PORT": "8000",
+                    "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
+                    "COGNITO_CLIENT_ID": self.user_pool_client_id,
+                    "COGNITO_REGION": self.region,
+                    "ENVIRONMENT": self.deploy_environment,
+                },
+                log_group=log_group,
+            )
+        else:
+            # Fallback to original bundling method
+            print("⚠️  Using fallback bundling - layers not found")
+            lambda_function = lambda_.Function(
+                self,
+                "ChatbotApiFunction",
+                function_name=f"chatbot-api-{self.deploy_environment}",
+                runtime=lambda_.Runtime.PYTHON_3_11,
+                handler="lambda_handler.lambda_handler",
+                code=lambda_.Code.from_asset(
+                    "..",
+                    bundling=cdk.BundlingOptions(
+                        image=lambda_.Runtime.PYTHON_3_11.bundling_image,
+                        command=[
+                            "bash", "-c",
+                            "pip install -r requirements.txt --target /asset-output --platform linux_x86_64 --only-binary=:all: --upgrade && cp -r src/ lambda_handler.py requirements.txt /asset-output/"
+                        ],
+                    ),
+                    exclude=[
+                        "infrastructure/cdk.out/*", "infrastructure/*", ".venv/*", ".git/*",
+                        ".github/*", "venv/*", "README.md", "CLAUDE.md", "deploy.sh",
+                        "test_api.py", "run_server.py", "*.log", ".env*", ".DS_Store",
+                        "__pycache__", "*.pyc", ".pytest_cache", ".coverage", "node_modules",
+                        "dist", "build", "scripts/*", "layers/*"
+                    ]
+                ),
+                timeout=Duration.seconds(30),
+                memory_size=512,
+                role=lambda_role,
+                environment={
+                    "DEBUG": "false",
+                    "LOG_LEVEL": "INFO",
+                    "APP_NAME": "Chatbot API",
+                    "HOST": "0.0.0.0",
+                    "PORT": "8000",
+                    "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
+                    "COGNITO_CLIENT_ID": self.user_pool_client_id,
+                    "COGNITO_REGION": self.region,
+                    "ENVIRONMENT": self.deploy_environment,
+                },
+                log_group=log_group,
+            )
 
         return lambda_function
 

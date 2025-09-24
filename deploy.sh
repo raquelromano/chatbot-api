@@ -1,6 +1,18 @@
 #!/bin/bash
 
 # Deploy Chatbot API to AWS Lambda using CDK
+#
+# PERFORMANCE OPTIMIZATIONS FOR FUTURE CONSIDERATION:
+# - Use Lambda layers for Python dependencies to avoid repackaging on every deploy
+# - Implement incremental deployment strategies for code-only changes
+# - Leverage CDK asset caching features to reuse unchanged assets
+# - Consider separating infrastructure changes from application code changes
+# - Use CDK hotswap for faster development deployments (cdk deploy --hotswap)
+#
+# Current deployment times:
+# - Initial deploy: 10+ minutes (includes CDK bootstrap, infrastructure setup)
+# - Subsequent deploys: 2-3 minutes (only updates changed resources)
+# - Code-only changes: Still requires full Lambda function update
 
 set -e  # Exit on any error
 
@@ -30,13 +42,11 @@ echo "📋 Deploying to AWS Account: $AWS_ACCOUNT_ID"
 echo "📍 Region: $AWS_REGION"
 echo "🏷️  Environment: $ENVIRONMENT"
 
-# Install Python dependencies for CDK
-echo "📦 Installing CDK dependencies..."
-cd infrastructure
-uv pip install -r requirements.txt
-cd ..
+# Build Lambda layers
+echo "🏗️  Building Lambda layers..."
+./scripts/build-layers.sh $ENVIRONMENT
 
-# Install application dependencies
+# Install application dependencies for local development
 echo "📦 Installing application dependencies..."
 uv pip install -r requirements.txt
 
@@ -60,6 +70,10 @@ uv pip install -r requirements.txt
 
 # Change to infrastructure directory for CDK commands
 cd infrastructure
+
+# Install CDK dependencies
+echo "📦 Installing CDK dependencies..."
+uv pip install -r requirements.txt
 
 # Bootstrap CDK if needed
 echo "🔧 Bootstrapping CDK (if needed)..."
@@ -95,9 +109,24 @@ fi
 cd ..
 
 echo ""
+echo "📊 Layer Information:"
+if [ -d "layers" ]; then
+    echo "   🏗️  Lambda layers used for faster deployments"
+    if [ -f "layers/dependencies-hash.txt" ]; then
+        deps_hash=$(cat layers/dependencies-hash.txt)
+        echo "   📦 Dependencies layer: ${deps_hash:0:12}..."
+    fi
+    echo "   📄 Application layer: Contains your source code"
+    echo "   ⚡ Next code-only deployments will be much faster!"
+else
+    echo "   ⚠️  No layers found - using traditional bundling"
+fi
+
+echo ""
 echo "📚 Next steps:"
 echo "   1. Configure your API keys in AWS Systems Manager Parameter Store using: ./scripts/setup-secrets.sh $ENVIRONMENT"
 echo "   2. Test your API endpoints"
 echo "   3. Configure your frontend to use the new API URL"
 echo ""
 echo "💡 Usage: ./deploy.sh [dev|prod]  (defaults to dev)"
+echo "🚀 Layer benefits: Dependencies only rebuild when requirements.txt changes"
