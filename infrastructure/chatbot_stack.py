@@ -205,7 +205,7 @@ def handler(event, context):
                 Message={
                     'Subject': {'Data': 'Your Chatbot API Verification Code'},
                     'Body': {
-                        'Text': {'Data': f'Your verification code is: {code}\\n\\nThis code will expire in 5 minutes.'},
+                        'Text': {'Data': f'Your verification code is: {code}' + '\\n\\nThis code will expire in 5 minutes.'},
                         'Html': {'Data': f'<h2>Your verification code is: <strong>{code}</strong></h2><p>This code will expire in 5 minutes.</p>'}
                     }
                 }
@@ -247,17 +247,14 @@ import json
 def handler(event, context):
     print(f"VerifyAuthChallenge event: {json.dumps(event)}")
 
-    if event['request']['challengeName'] == 'CUSTOM_CHALLENGE':
-        # Get the code from private challenge parameters
-        expected_code = event['request']['privateChallengeParameters'].get('code', '')
-        provided_code = event['request']['challengeAnswer']
+    # Get the code from private challenge parameters
+    expected_code = event['request']['privateChallengeParameters'].get('code', '')
+    provided_code = event['request']['challengeAnswer']
 
-        print(f"Expected: {expected_code}, Provided: {provided_code}")
+    print(f"Expected: {expected_code}, Provided: {provided_code}")
 
-        # Verify the code
-        event['response']['answerCorrect'] = (expected_code == provided_code)
-    else:
-        event['response']['answerCorrect'] = False
+    # Verify the code
+    event['response']['answerCorrect'] = (expected_code == provided_code)
 
     return event
 """),
