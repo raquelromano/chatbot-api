@@ -197,7 +197,7 @@ def handler(event, context):
         try:
             ses = boto3.client('ses', region_name='us-east-1')
             # Use a default email - you'll need to verify this in SES
-            from_email = 'noreply@chatbot-api.com'  # Change to your verified domain
+            from_email = os.environ.get('SES_FROM_EMAIL', 'noreply@chatbot-api.com')
 
             ses.send_email(
                 Source=from_email,

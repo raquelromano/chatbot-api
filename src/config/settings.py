@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     
     # Data collection settings
     enable_logging: bool = Field(default=True, env="ENABLE_LOGGING")
+
+    # Email settings
+    ses_from_email: str = Field(default="noreply@chatbot-api.com", env="SES_FROM_EMAIL")
     log_level: str = Field(default="INFO", env="LOG_LEVEL")
     data_retention_days: int = Field(default=30, env="DATA_RETENTION_DAYS")
 
