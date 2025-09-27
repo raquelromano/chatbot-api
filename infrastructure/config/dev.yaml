@@ -1,0 +1,8 @@
+environment: dev
+email:
+  ses_from_email: "rromano@aerdf.org"
+cors:
+  # Replace with URLs where your frontend is hosted (e.g., Netlify, Vercel, custom domain)
+  allowed_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8000"

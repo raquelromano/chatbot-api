@@ -124,6 +124,19 @@ docker run -p 8000:8080 chatbot-api:dev        # Test deployed container locally
 
 The application uses environment variables for configuration. Copy `.env.example` to `.env` and configure the following settings:
 
+### Environment-Specific Configuration Files
+
+The project includes YAML configuration files for different deployment environments:
+
+- **`infrastructure/config/dev.yaml`** - Development environment configuration
+- **`infrastructure/config/prod.yaml`** - Production environment configuration
+
+These files configure environment-specific settings including:
+- **Email Configuration**: SES sender email address for passwordless authentication
+- **CORS Settings**: Allowed origins for cross-origin requests based on where your frontend is hosted
+
+**Usage**: These files are automatically loaded during CDK deployment based on the environment parameter passed to `./deploy.sh {env}`.
+
 ### Required Environment Variables
 
 #### Basic Application Settings
@@ -298,4 +311,21 @@ aws logs filter-log-events \
   --log-group-name "/aws/lambda/chatbot-api-dev-create-auth" \
   --filter-pattern "Verification code for your-email@example.com"
 ```
+
+## CI/CD Configuration
+
+<details>
+<summary>Click to expand CI/CD details (currently disabled)</summary>
+
+### Manual Deployment Only
+
+GitHub Actions is configured for **manual deployments only**. Automatic triggers on `main` branch pushes have been disabled.
+
+**To deploy manually:**
+1. Go to GitHub Actions → "Deploy Chatbot API" workflow
+2. Click "Run workflow" → Select branch → "Run workflow"
+
+**To re-enable automatic deployments:** Uncomment the `push` and `pull_request` triggers in `.github/workflows/deploy.yml`
+
+</details>
 

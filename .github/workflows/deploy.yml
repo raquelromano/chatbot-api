@@ -1,12 +1,14 @@
 name: Deploy Chatbot API
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
+  # Disabled automatic triggers on main branch
+  # push:
+  #   branches:
+  #     - main
+  # pull_request:
+  #   branches:
+  #     - main
 
 env:
   AWS_REGION: us-east-1
@@ -50,7 +52,7 @@ jobs:
   deploy:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout code
@@ -96,7 +98,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
-          # Determine environment based on branch
+          # Determine environment based on branch (manual dispatch only)
           if [ "${{ github.ref }}" == "refs/heads/main" ]; then
             ENVIRONMENT="prod"
           else

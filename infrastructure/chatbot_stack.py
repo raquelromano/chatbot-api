@@ -3,6 +3,7 @@
 from typing import Dict, Any, Optional
 import os
 import hashlib
+import yaml
 import aws_cdk as cdk
 from aws_cdk import (
     Stack,
@@ -31,6 +32,7 @@ class ChatbotStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, deploy_environment: str = "dev", **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
         self.deploy_environment = deploy_environment
+        self.config = self._load_config()
 
         # Create S3 bucket for static assets
         self.assets_bucket = s3.Bucket(
@@ -61,6 +63,19 @@ class ChatbotStack(Stack):
 
         # Create outputs
         self._create_outputs()
+
+    def _load_config(self) -> Dict[str, Any]:
+        """Load environment-specific configuration from YAML file."""
+        config_file = os.path.join(os.path.dirname(__file__), "config", f"{self.deploy_environment}.yaml")
+
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(
+                f"Configuration file not found: {config_file}. "
+                f"Please create config/{self.deploy_environment}.yaml"
+            )
+
+        with open(config_file, 'r') as f:
+            return yaml.safe_load(f)
 
     def _create_cognito_user_pool(self) -> cognito.UserPool:
         """Create Cognito User Pool for authentication."""
@@ -153,6 +168,9 @@ class ChatbotStack(Stack):
                 os.path.join(os.path.dirname(os.path.dirname(__file__)), "lambdas", "auth")
             ),
             timeout=cdk.Duration.minutes(1),
+            environment={
+                "SES_FROM_EMAIL": self._get_ses_from_email(),
+            },
         )
 
         # Add SES permissions to send emails
@@ -323,6 +341,7 @@ class ChatbotStack(Stack):
                 "COGNITO_CLIENT_ID": self.user_pool_client_id,
                 "COGNITO_REGION": self.region,
                 "ENVIRONMENT": self.deploy_environment,
+                "SES_FROM_EMAIL": self._get_ses_from_email(),
             },
             log_group=log_group,
         )
@@ -458,12 +477,11 @@ class ChatbotStack(Stack):
 
     def _get_cors_origins(self) -> list[str]:
         """Get environment-specific CORS origins."""
-        if self.deploy_environment == "prod":
-            # Replace with your production domains
-            return ["https://your-domain.com"]
-        else:
-            # Development environment - allow localhost
-            return ["http://localhost:3000", "http://localhost:8000"]
+        return self.config["cors"]["allowed_origins"]
+
+    def _get_ses_from_email(self) -> str:
+        """Get environment-specific SES from email address."""
+        return self.config["email"]["ses_from_email"]
 
     def _create_outputs(self) -> None:
         """Create CloudFormation outputs."""
