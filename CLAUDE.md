@@ -2,78 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Note**: CHeck the current date before running any web searches for which you want the latest information about  best practices, tools, or documentation, (eg. with `date +"%Y"` to get the current year).
-
 ## Project Overview
 
-Chatbot wrapper API with adapter-based architecture supporting multiple AI model providers. Currently supports OpenAI API, local vLLM models, and OpenAI-compatible providers.
+Chatbot wrapper API with adapter-based architecture supporting multiple AI model providers. Currently supports Google Gemini, with placeholders for OpenAI-compatible providers and local vLLM models.
 
-**Note**: Backend API service. Frontend: `../chatbot-frontend`. Deployment: AWS Lambda + API Gateway + Cognito serverless architecture.
-
-## Current Status
-
-**Phase 1 - Project Foundation: ✅ COMPLETED**
-- ✅ Directory structure created with all planned modules
-- ✅ Python package structure with `__init__.py` files
-- ✅ Requirements.txt with FastAPI, vLLM, and essential dependencies
-- ✅ pyproject.toml with project metadata and development tools
-- ✅ Environment configuration (.env.example, .gitignore)
-- ✅ Updated README.md with setup instructions (including uv support)
-
-**Phase 2 - Core Model Adapters: ✅ COMPLETED**
-- ✅ Google/Gemini adapter implementation with Gemini 2.5 Pro and 2.5 Flash models (ENABLED)
-- ✅ OpenAI adapter implementation supporting OpenAI API, local vLLM models, and OpenAI-compatible providers (DISABLED)
-- ✅ Model registry system for dynamic model configuration
-- ✅ Settings management with environment variable support
-- ✅ Unified chat completion interface across different model backends
-
-**Phase 3 - API Endpoints & Chat Interface: ✅ COMPLETED**
-- ✅ FastAPI application structure with main app file
-- ✅ Chat completion endpoints using existing OpenAI adapter
-- ✅ Health check and status endpoints (live, ready, comprehensive)
-- ✅ Request/response models with Pydantic validation
-- ✅ Error handling and logging middleware
-- ✅ Adapter factory integrating with model configuration
-- ✅ OpenAI-compatible API endpoints
-- ✅ Streaming and non-streaming chat completions
-- ✅ Model listing endpoint
-- ✅ Installation and testing infrastructure
-
-**Phase 4 - Authentication System: ✅ COMPLETED**
-- ✅ Auth0 configuration settings added to settings.py
-- ✅ Authentication models created (src/auth/models.py)
-- ✅ Auth module structure established (src/auth/)
-- ✅ Auth0 client implementation with institution registry
-- ✅ JWT middleware for token validation
-- ✅ Authentication API endpoints with onboarding flow
-- ✅ User management system with role storage
-- ✅ Integration with main FastAPI application
-
-**Phase 5 - AWS Lambda Deployment: ✅ COMPLETED**
-- ✅ Mangum wrapper for FastAPI on AWS Lambda
-- ✅ AWS CDK infrastructure stack (Lambda, API Gateway, Cognito, CloudFront)
-- ✅ AWS Cognito User Pools integration with OAuth providers
-- ✅ API Gateway HTTP API with Cognito JWT authorizer
-- ✅ AWS Secrets Manager for secure secrets management
-- ✅ GitHub Actions CI/CD pipeline for automated deployment
-- ✅ CloudFront distribution for global edge caching
-- ✅ IAM roles and security policies
-- ✅ **Docker Container Deployment** - Replaced Lambda layers with container images
-- ✅ **Passwordless Authentication** - Cognito custom auth lambda triggers with email verification codes
-
-
-## Development Commands
-
-### Key Commands for Claude
-- `python run_server.py` - Start the chatbot service locally
-- `python test_api.py` - Test API endpoints
-- `uv pip install -r requirements.txt` - Install dependencies
-- `black . && isort . && flake8 . && mypy src/` - Code quality checks
-- `./deploy.sh` - Deploy to AWS Lambda using CDK with Docker containers
-- `./scripts/build-docker.sh` - Build and push Docker image to ECR
-- Secrets are managed via AWS Secrets Manager (automatically configured by CDK)
-
-## Implementation Guidelines
+## Guidelines
 
 ### Code Conventions
 - Follow existing adapter pattern when adding new providers
@@ -81,146 +14,35 @@ Chatbot wrapper API with adapter-based architecture supporting multiple AI model
 - Implement structured logging with JSON format
 - Never commit API keys or sensitive configuration
 - Use environment variables for secrets management
+- Check current date with `date +"%Y"` before web searches for latest documentation
 
-## Authentication Implementation
+### Documentation Guidelines
+- Never write information about the repository into .md files without first verifying it exists
+- Always check the actual codebase structure before documenting features, tests, or commands
+- Use Glob, Grep, or Read tools to verify files and directories exist before referencing them
+- Ignore paths that contain cdk.out, .venv* to exclude those directories when doing local searches
+- Also exclude the ./backup/ directory in the project root
 
-**Current Status**: AWS Cognito User Pools with **Passwordless Authentication** (email verification codes)
+## Architecture
 
-**Passwordless Authentication Flow**:
-- **POST /auth/passwordless/login**: Send verification code to email
-- **POST /auth/passwordless/verify**: Verify code and get JWT token
-- **Custom Lambda Triggers**: Handle code generation, email sending, and verification
-- **CloudWatch Logging**: Verification codes logged for development/testing
-- **SES Integration**: Ready for production email sending (requires domain verification)
+### Model Providers
+- **Google Gemini** (ENABLED): 2.5 Pro (2M context) and 2.5 Flash (1M context) via `GOOGLE_API_KEY`
+- **OpenAI API** (DISABLED): GPT models, can be re-enabled in `src/config/models.py`
+- **Local vLLM** (DISABLED): Llama, Mistral via OpenAI-compatible server
+- **Anthropic** (PARTIAL): Model configs exist, adapter implementation needed
 
-**Key Components**:
-- **Auth Models** (`src/auth/models.py`): User, session, and institution data structures
-- **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito passwordless auth flows
-- **Auth0 Client** (`src/auth/auth0_client.py`): Legacy Auth0 support (fallback)
-- **JWT Middleware** (`src/auth/middleware.py`): Token validation for both providers
-- **Auth Endpoints** (`src/auth/auth.py`): Passwordless login/verify + OAuth endpoints
-- **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
-- **Lambda Triggers** (`infrastructure/chatbot_stack.py`): Custom auth challenge handlers
+### Authentication
+**Current**: AWS Cognito User Pools with passwordless email verification codes
+- **Endpoints**: `POST /auth/passwordless/login`, `POST /auth/passwordless/verify`
+- **Components**: Auth models, Cognito client, JWT middleware, user manager
+- **Files**: `src/auth/models.py`, `src/auth/cognito_client.py`, `src/auth/middleware.py`, `src/auth/auth.py`, `src/auth/user_manager.py`
 
-**Current Setup (Development)**:
-- ✅ Passwordless email authentication with 6-digit codes
-- ✅ Automatic user creation for new email addresses
-- ✅ Verification codes logged to CloudWatch for testing
-- ⚠️ **SES Email Setup**: Codes logged to CloudWatch (email sending fails gracefully)
-
-**Production Setup Required**:
-- 🔄 **SES Domain Verification**: Set up verified domain for production email sending
-- 🔄 **Update From Email**: Replace `noreply@chatbot-api.com` with verified domain
-
-**Legacy Methods**: Google, Microsoft, SAML, GitHub OAuth via Cognito Hosted UI (optional)
-
-## Next Steps (Phase 6+ Implementation)
-
-1. **Simplified Magic Link Authentication** (Phase 6 - Next Priority):
-   - **Custom Magic Link System**: Replace Cognito passwordless with pure magic link implementation
-   - **Email Service Integration**: Direct AWS SES integration for sending magic links
-   - **Token Management**: DynamoDB-based token storage with expiration and cleanup
-   - **Simplified User Flow**: Remove institution-based routing, support any email domain
-   - **Rate Limiting**: Built-in abuse prevention and email throttling
-   - **Security Features**: CSRF protection, secure token generation, and validation
-   - **Benefits**: Simpler UX, reduced AWS costs, full control over auth flow
-
-2. **Database Integration** (Phase 7):
-   - **DynamoDB Implementation**: Replace in-memory user storage with AWS DynamoDB
-   - **Database Schema**: User profiles, sessions, chat history, and analytics tables
-   - **Migration System**: DynamoDB table creation and schema management
-   - **Analytics Queries**: DynamoDB queries for user behavior analysis and reporting
-   - **Data Export**: S3 data lake integration for analytics and reporting
-   - **Serverless Persistence**: Native AWS serverless database integration
-
-3. **Additional Model Providers** (Phase 8 - PARTIALLY COMPLETED):
-   - ✅ **Google Adapter** (`src/models/google_adapter.py`): Gemini 2.5 Pro and 2.5 Flash support (ENABLED)
-   - 🔄 **Anthropic Adapter**: Claude model integration (model configs exist, adapter implementation needed)
-   - 🔄 **Enable OpenAI Models**: Currently disabled, can be re-enabled if needed
-   - ✅ **Enhanced Model Registry**: Provider-specific configurations and capability detection
-
-4. **Enhanced Data Collection System** (Phase 9):
-   - **Conversation Analytics**: Track usage patterns, model performance, user engagement
-   - **Real-time Metrics**: API response times, error rates, user activity dashboards
-   - **Data Analysis Tools**: Built-in analytics endpoints for team insights
-   - **Privacy Controls**: FERPA compliance, data retention policies, user data deletion
-
-## Current Implementation Status
-
-### Completed Components
-- ✅ **Google Adapter** (`src/models/google_adapter.py`): Gemini 2.5 Pro and 2.5 Flash models (ENABLED)
-- ✅ **OpenAI Adapter** (`src/models/openai_adapter.py`): Supports OpenAI API, vLLM, and compatible providers (DISABLED)
-- ✅ **Model Configuration** (`src/config/models.py`): Centralized model registry with Pydantic validation
-- ✅ **Adapter Factory** (`src/models/adapter_factory.py`): Runtime adapter management and health checks
-- ✅ **Settings Management** (`src/config/settings.py`): Environment-based configuration with Cognito + Auth0 support
-- ✅ **FastAPI Application** (`src/api/main.py`): Complete web server with middleware and error handling
-- ✅ **API Routes** (`src/api/routes/`): Chat completions, health checks, model listing, and authentication
-- ✅ **API Models** (`src/api/models.py`): OpenAI-compatible request/response models
-- ✅ **Base Interfaces** (`src/models/base.py`): Abstract adapter interface and common models
-- ✅ **Authentication System** (`src/auth/`): Complete Cognito + Auth0 integration with JWT middleware
-  - ✅ **Cognito Client** (`src/auth/cognito_client.py`): AWS Cognito OAuth flows and user management
-  - ✅ **Auth0 Client** (`src/auth/auth0_client.py`): Legacy Auth0 OAuth flows and institution registry
-  - ✅ **JWT Middleware** (`src/auth/middleware.py`): Multi-provider token validation and user context
-  - ✅ **Auth Endpoints** (`src/auth/auth.py`): Login, callback, onboarding, profile management
-  - ✅ **User Manager** (`src/auth/user_manager.py`): In-memory user and session management
-- ✅ **AWS Infrastructure** (`infrastructure/`): Complete CDK stack for serverless deployment
-  - ✅ **Lambda Handler** (`lambda_handler.py`): Mangum FastAPI wrapper with Parameter Store integration
-  - ✅ **CDK Stack** (`infrastructure/chatbot_stack.py`): Lambda, API Gateway, Cognito, CloudFront, S3
-  - ✅ **Secrets Management** (`scripts/setup-secrets.sh`): AWS Secrets Manager configuration
-  - ✅ **CI/CD Pipeline** (`.github/workflows/deploy.yml`): Automated testing and deployment
-- ✅ **Testing Infrastructure** (`test_api.py`, `run_server.py`): Development and testing tools
-- ✅ **Deployment Tools** (`deploy.sh`, `requirements.txt`): Production deployment and dependency management
+### Infrastructure (AWS Serverless)
+- **Compute**: Lambda (FastAPI + Mangum adapter) with Docker containers via ECR
+- **API**: API Gateway with Cognito JWT authorization
+- **CDN**: CloudFront for global edge caching
+- **Storage**: S3 for static assets, Secrets Manager for configuration
+- **Monitoring**: CloudWatch logging and alerting
+- **Environments**: Dev/prod separation with resource suffixes and isolated configurations
 
 
-## Current Working State
-
-The application is now **fully functional** for Phase 5 objectives with serverless AWS deployment:
-
-### ✅ Local Development
-- **Installation**: `uv pip install -r requirements.txt`
-- **Startup**: `python run_server.py`
-- **Testing**: `python test_api.py`
-- **API Docs**: `http://localhost:8000/docs`
-
-### ✅ AWS Deployment
-- **Setup Secrets**: `./scripts/setup-secrets.sh`
-- **Deploy**: `./deploy.sh`
-- **CI/CD**: Automated deployment via GitHub Actions
-- **Monitoring**: CloudWatch logs and Lambda metrics
-
-### ✅ Working Features
-- OpenAI-compatible REST API endpoints
-- AWS Cognito authentication with OAuth providers
-- Health checks and status monitoring
-- Model listing and discovery
-- Chat completions (streaming and non-streaming)
-- Error handling with structured logging
-- Global edge caching via CloudFront
-- Secure secrets management via Secrets Manager
-
-### ⚠️ Configuration Required
-
-**For Development Environment:**
-1. **AWS Setup**: Configure AWS credentials and account ID
-2. **Secrets**: Run `./scripts/setup-secrets.sh dev` and update API keys
-3. **Deploy**: Run `./deploy.sh dev`
-4. **OAuth**: Dev environment uses `http://localhost:3000` for OAuth callbacks
-
-**For Production Environment:**
-1. **Update Production URLs**: Edit `infrastructure/chatbot_stack.py` lines 320-321 and 330 to replace `your-domain.com` with your actual production domain
-2. **Secrets**: Run `./scripts/setup-secrets.sh prod` and update API keys
-3. **Deploy**: Run `./deploy.sh prod`
-4. **OAuth**: Configure production OAuth providers in Cognito User Pool
-
-**Environment Separation:**
-- **Resources**: Each environment gets separate Lambda functions, S3 buckets, Cognito pools
-- **Secrets**: Environment-specific Secrets Manager paths (`/chatbot-api/dev/` vs `/chatbot-api/prod/`)
-- **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`)
-- **CORS**: Dev allows localhost, prod restricts to production domains
-
-### 🔧 Development Tools
-- `run_server.py`: Local server startup with graceful shutdown
-- `test_api.py`: Comprehensive API endpoint testing
-- `deploy.sh`: Production deployment with validation
-- `scripts/setup-secrets.sh`: AWS Secrets Manager configuration
-- Interactive API documentation at `/docs` endpoint

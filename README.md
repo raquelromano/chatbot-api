@@ -8,220 +8,77 @@ A serverless chatbot API with adapter-based architecture that provides a unified
 
 ## Quick Start
 
-### Local Development
-
-The project uses **two separate virtual environments**:
-- **Application Environment** (`.venv-app`): For running the chatbot API locally
-- **Infrastructure Environment** (`.venv-cdk`): For AWS CDK deployment commands
-
-1. **Setup Application Environment:**
-   ```bash
-   # Using uv (recommended)
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   uv venv .venv-app && source .venv-app/bin/activate
-   uv pip install -r requirements.txt
-
-   # Or using pip
-   python -m venv .venv-app && source .venv-app/bin/activate
-   pip install -r requirements.txt
-   ```
-
-2. **Setup CDK Environment (for deployment only):**
-   ```bash
-   # Using uv (recommended)
-   uv venv infrastructure/.venv-cdk && source infrastructure/.venv-cdk/bin/activate
-   uv pip install -r infrastructure/requirements.txt
-
-   # Or using pip
-   python -m venv infrastructure/.venv-cdk && source infrastructure/.venv-cdk/bin/activate
-   pip install -r infrastructure/requirements.txt
-   ```
-
-3. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your API keys and configuration
-   ```
-
-4. **Run locally (using Application Environment):**
-   ```bash
-   source .venv-app/bin/activate    # Activate application environment
-   python run_server.py
-   # API docs: http://localhost:8000/docs
-   ```
-
-5. **Test the API:**
-   ```bash
-   source .venv-app/bin/activate    # Activate application environment
-   python test_api.py
-   ```
-
-### Virtual Environment Management
-
-**For Local Development & Testing:**
+### Prerequisites
 ```bash
-source .venv-app/bin/activate      # Application environment
-python run_server.py              # Run API server
-python test_api.py                # Test API endpoints
-```
+# Install uv (recommended) or ensure Python 3.11+ is available
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-**For AWS Deployment:**
-```bash
-source infrastructure/.venv-cdk/bin/activate   # CDK environment
-./deploy.sh dev                               # Deploy using separate environments
-```
-
-**Environment Contents:**
-- **`.venv-app`**: FastAPI, authentication, AWS SDK, model adapters, testing tools
-- **`.venv-cdk`**: AWS CDK libraries, deployment tools, infrastructure code
-
-### AWS Deployment (Docker Container)
-
-The application uses **Docker containers** for AWS Lambda deployment, providing:
-- ✅ Exact Lambda runtime environment (Python 3.11)
-- ✅ Eliminates cross-platform dependency issues
-- ✅ Fast rebuilds with Docker layer caching
-- ✅ Industry standard container deployment
-
-#### Prerequisites
-```bash
-# Check Docker is running
+# For deployment: Docker, AWS CLI, and CDK
 docker info
-
-# Check AWS credentials
 aws sts get-caller-identity
-
-# Install AWS CDK
 npm install -g aws-cdk
 ```
 
-#### Development Environment
+### Local Development Setup
 
-1. **Configure AWS credentials:**
-   ```bash
-   aws configure
-   # Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
-   ```
+The project uses **two separate virtual environments**:
+- **`.venv-app`**: Application runtime (FastAPI, model adapters, testing)
+- **`.venv-cdk`**: Infrastructure deployment (AWS CDK, deployment tools)
 
-2. **Deploy to development:**
-   ```bash
-   ./deploy.sh dev
-   ```
-   This automatically creates secrets in AWS Secrets Manager (with placeholder values) and sets up passwordless email authentication via Cognito.
-
-3. **Update API key with real value:**
-   ```bash
-   # After deployment, update the Google API key:
-   aws secretsmanager put-secret-value \
-     --secret-id "chatbot-api/dev/google-api-key" \
-     --secret-string '{"api_key":"your-real-google-api-key-here"}'
-
-   # Or update via AWS Console: Secrets Manager
-   # Note: Only Google API key is required (OpenAI/Anthropic models are disabled)
-   ```
-
-**That's it!** The application now uses **passwordless authentication** with email verification codes, so no OAuth provider setup is needed.
-
-**Optional: OAuth Provider Setup** (if you want to add OAuth login options):
-
-<details>
-<summary>Click to expand OAuth configuration steps</summary>
-
-**Extract deployment values:**
-Get the deployment's values for `UserPoolId`, `UserPoolClientId`, and `CognitoDomain` from infrastructure/cdk-outputs.json
 ```bash
-USER_POOL_ID=<user-pool-id>
-USER_POOL_CLIENT_ID=<user-pool-client-id>
-COGNITO_DOMAIN=<cognito-domain>
+# 1. Setup application environment
+uv venv .venv-app && source .venv-app/bin/activate
+uv pip install -r requirements.txt
+
+# 2. Setup CDK environment (deployment only)
+uv venv infrastructure/.venv-cdk && source infrastructure/.venv-cdk/bin/activate
+uv pip install -r infrastructure/requirements.txt
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env with your GOOGLE_API_KEY and other settings
+
+# 4. Run and test locally
+source .venv-app/bin/activate
+python run_server.py              # Start server at http://localhost:8000/docs
+python test_api.py                # Test API endpoints
 ```
 
-**Configure OAuth providers:**
+### AWS Deployment
 
-**First, get your OAuth app credentials:**
+**Docker Container Deployment** to AWS Lambda with automatic infrastructure provisioning:
 
-**Google OAuth Setup:**
-1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials) → Create OAuth 2.0 Client
-2. Set **Authorized redirect URIs** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-3. Copy your **Client ID** and **Client Secret**
-
-**Microsoft OAuth Setup:**
-1. Go to [Azure App Registrations](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps) → New Registration
-2. Set **Redirect URI** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-3. Copy your **Application (client) ID** and create a **Client Secret**
-
-**GitHub OAuth Setup:**
-1. Go to Settings → Developer settings → OAuth Apps → New OAuth App
-2. Set **Authorization callback URL** to: `https://$COGNITO_DOMAIN.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
-3. Copy your **Client ID** and **Client Secret**
-
-**Then configure providers via AWS CLI:**
 ```bash
-# Configure Google OAuth provider
-aws cognito-idp create-identity-provider \
-  --user-pool-id "$USER_POOL_ID" \
-  --provider-name "Google" \
-  --provider-type "Google" \
-  --provider-details '{
-    "client_id": "your-google-client-id.apps.googleusercontent.com",
-    "client_secret": "your-google-client-secret",
-    "authorize_scopes": "openid email profile"
-  }' \
-  --attribute-mapping '{
-    "email": "email",
-    "given_name": "given_name",
-    "family_name": "family_name"
-  }'
+# Configure AWS credentials
+aws configure
+# Or set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
 
-# Enable OAuth providers on your User Pool Client
-aws cognito-idp update-user-pool-client \
-  --user-pool-id "$USER_POOL_ID" \
-  --client-id "$USER_POOL_CLIENT_ID" \
-  --supported-identity-providers "Google" "COGNITO" \
-  --callback-urls "http://localhost:3000/callback" \
-  --logout-urls "http://localhost:3000/logout"
+# Deploy to development
+source infrastructure/.venv-cdk/bin/activate
+./deploy.sh dev
+
+# Deploy to production (update domain in infrastructure/chatbot_stack.py first)
+./deploy.sh prod
 ```
 
-</details>
+**Post-deployment**: Update Google API key in AWS Secrets Manager:
+```bash
+aws secretsmanager put-secret-value \
+  --secret-id "chatbot-api/dev/google-api-key" \
+  --secret-string '{"api_key":"your-real-google-api-key-here"}'
+```
 
-The deployment automatically:
-   - Creates ECR repository (if needed)
-   - Builds and pushes Docker image
-   - Deploys Lambda function with container
+**Deployment Features**:
+- Automatic ECR repository creation and Docker image management
+- Passwordless email authentication via Cognito (no OAuth setup needed)
+- Environment isolation (dev/prod with separate resources)
+- **Timing**: First deployment 8-12 min, subsequent 3-5 min, code-only 2-3 min
 
-   **Local Testing** (same container as deployed):
-   ```bash
-   # Build image locally (after first deployment)
-   ./scripts/build-docker.sh dev
-
-   # Test same container locally
-   docker run -p 8000:8080 chatbot-api:dev
-   ```
-
-**First-time deployment:** 8-12 minutes (includes CDK bootstrap, infrastructure setup, ECR setup)
-**Subsequent deployments:** 3-5 minutes (Docker layer caching + CDK asset caching)
-**Code-only changes:** 2-3 minutes (only changed layers rebuild)
-
-#### Production Environment
-
-1. **Update production URLs** in `infrastructure/chatbot_stack.py`:
-   - Replace `your-domain.com` with your actual production domain (lines 320-321, 330)
-
-2. **Deploy to production:**
-   ```bash
-   ./deploy.sh prod
-   ```
-   This automatically creates secrets in AWS Secrets Manager.
-
-3. **Update API key with real value:**
-   ```bash
-   # After deployment, update the Google API key:
-   aws secretsmanager put-secret-value \
-     --secret-id "chatbot-api/prod/google-api-key" \
-     --secret-string '{"api_key":"your-real-google-api-key-here"}'
-   ```
-
-#### CI/CD with GitHub Actions
-Both environments can be deployed automatically via GitHub Actions workflows.
+**Local Container Testing** (same as deployed):
+```bash
+./scripts/build-docker.sh dev
+docker run -p 8000:8080 chatbot-api:dev
+```
 
 ## Project Structure
 
@@ -243,48 +100,25 @@ chatbot-api/
 
 ## Development
 
+### Local Development Commands
+```bash
+source .venv-app/bin/activate    # Activate application environment
+python run_server.py             # Start development server
+```
+
 ### Testing
 ```bash
-source .venv-app/bin/activate   # Activate application environment
-pytest                          # Run all tests
-pytest tests/unit/              # Run unit tests only
-pytest tests/integration/       # Run integration tests only
+source .venv-app/bin/activate    # Activate application environment
+# Note: pytest is available in requirements.txt but no test suites are currently implemented
 ```
 
-### Code Quality
-```bash
-source .venv-app/bin/activate   # Activate application environment
-black .                         # Format code
-isort .                         # Sort imports
-flake8 .                        # Lint code
-mypy src/                       # Type checking
-```
-
-### Docker Deployment
+### Docker Operations
 ```bash
 source infrastructure/.venv-cdk/bin/activate   # Activate CDK environment
-./deploy.sh dev                                 # Full deployment (creates ECR, builds/pushes image, deploys Lambda)
-./scripts/build-docker.sh dev                  # Build and push Docker image only (after ECR exists)
-
-# Test deployed container locally (no venv needed for Docker)
-docker run -p 8000:8080 chatbot-api:dev        # Test same container locally that's deployed
-docker build -t chatbot-demo .                 # Build local development container (different from deployed)
+./deploy.sh dev                                 # Full deployment
+./scripts/build-docker.sh dev                  # Build/push image only
+docker run -p 8000:8080 chatbot-api:dev        # Test deployed container locally
 ```
-
-## Model Providers
-
-### Currently Supported (ENABLED)
-- **Google Gemini**: Gemini 2.5 Pro and Gemini 2.5 Flash via Google AI API
-  - Requires `GOOGLE_API_KEY`
-  - 2M token context (Pro), 1M token context (Flash)
-
-### Available but Disabled
-- **OpenAI API**: GPT-3.5, GPT-4, etc. (can be re-enabled in `src/config/models.py`)
-- **Local vLLM Models**: Llama, Mistral, etc. via OpenAI-compatible server
-- **OpenAI-Compatible Providers**: Any OpenAI-compatible endpoint
-
-### Partially Implemented
-- **Anthropic**: Model configs exist, but adapter implementation needed for Claude models
 
 ## Configuration
 
@@ -341,29 +175,6 @@ JWT_EXPIRATION_HOURS=24                       # Token expiration time
 AUTH_REQUIRED_ENDPOINTS=/v1/chat/completions,/v1/models # Comma-separated list
 ```
 
-#### Auth0 Setup (Legacy Fallback)
-```bash
-# Auth0 Configuration (fallback for local development)
-AUTH0_DOMAIN=your-tenant.auth0.com            # Your Auth0 domain
-AUTH0_CLIENT_ID=your_auth0_client_id          # Auth0 application client ID
-AUTH0_CLIENT_SECRET=your_auth0_client_secret  # Auth0 application client secret
-AUTH0_AUDIENCE=https://your-api-identifier    # Auth0 API identifier (optional)
-```
-
-#### Cognito User Pool Setup
-
-The CDK deployment automatically creates a Cognito User Pool with:
-
-1. **OAuth Providers**: Google, Microsoft, SAML, GitHub support
-2. **Hosted UI**: Pre-built login/signup interface
-3. **JWT Tokens**: Automatic token validation via API Gateway
-4. **User Management**: Admin functions for user creation/deletion
-
-To configure OAuth providers:
-1. Go to AWS Cognito Console
-2. Select your User Pool (created by CDK)
-3. Configure identity providers under "Sign-in experience"
-4. Add OAuth app credentials for each provider
 
 ### Data Collection & Logging
 ```bash
@@ -443,142 +254,48 @@ The application provides OpenAI-compatible REST API endpoints:
 
 ### Example Usage
 
-#### Local Development (localhost:8000)
-
-**✅ Testable endpoints when `ENABLE_AUTH=false`:**
+#### Core API Testing (No Authentication)
 ```bash
-# Core API functionality
-curl http://localhost:8000/v1/models                    # List available models
-curl http://localhost:8000/v1/chat/completions \        # Create chat completion
+# Basic endpoints
+curl http://localhost:8000/v1/models
+curl http://localhost:8000/health/
+curl http://localhost:8000/
+
+# Chat completion
+curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{"messages": [{"role": "user", "content": "Hello!"}], "model_id": "gemini-2.5-flash"}'
-
-# Health and status
-curl http://localhost:8000/health/                      # Comprehensive health check
-curl http://localhost:8000/                             # Basic service info
 ```
 
-**✅ Passwordless authentication when `ENABLE_AUTH=true`:**
+#### Passwordless Authentication Flow
 ```bash
-# 1. Request verification code (sent to email)
-curl -X POST http://localhost:8000/auth/passwordless/login \
+# 1. Request verification code
+curl -X POST [BASE_URL]/auth/passwordless/login \
   -H "Content-Type: application/json" \
   -d '{"email": "your-email@example.com"}'
 
-# Returns: {"message": "Code sent", "session": "SESSION_TOKEN"}
-
 # 2. Verify code and get JWT token
-curl -X POST http://localhost:8000/auth/passwordless/verify \
+curl -X POST [BASE_URL]/auth/passwordless/verify \
   -H "Content-Type: application/json" \
-  -d '{
-    "email": "your-email@example.com",
-    "session": "SESSION_TOKEN_FROM_STEP1",
-    "code": "123456"
-  }'
-
-# Returns: {"access_token": "JWT_TOKEN", "user": {...}}
+  -d '{"email": "your-email@example.com", "session": "SESSION_TOKEN", "code": "123456"}'
 
 # 3. Use JWT for authenticated requests
-curl -X POST http://localhost:8000/v1/chat/completions \
+curl -X POST [BASE_URL]/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer JWT_TOKEN" \
   -d '{"messages": [{"role": "user", "content": "Hello!"}], "model_id": "gemini-2.5-flash"}'
-
-# Auth service status and configuration
-curl http://localhost:8000/auth/status                  # Check auth configuration
-curl http://localhost:8000/auth/institutions            # List educational institutions
 ```
 
-**📧 Finding Verification Codes:**
-- **Development**: Codes are logged to CloudWatch when email sending fails
+**Base URLs**: `http://localhost:8000` (local) or `https://your-api-domain.com` (deployed)
+
+**Finding Verification Codes**:
+- **Development**: Check CloudWatch logs `/aws/lambda/chatbot-api-dev-create-auth`
 - **Production**: Codes sent via email (requires SES domain setup)
 
-#### Dev/Prod Deployment (AWS)
-
-**✅ Passwordless authentication flow:**
 ```bash
-# 1. Request verification code
-curl -X POST https://your-api-domain.com/auth/passwordless/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "your-email@example.com"}'
-
-# 2. Get verification code from CloudWatch logs (development)
+# View verification codes in CloudWatch (development)
 aws logs filter-log-events \
   --log-group-name "/aws/lambda/chatbot-api-dev-create-auth" \
-  --filter-pattern "Verification code for your-email@example.com" \
-  --no-cli-pager \
-  --output text
-
-# 3. Verify code and get JWT token
-curl -X POST https://your-api-domain.com/auth/passwordless/verify \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "your-email@example.com",
-    "session": "SESSION_TOKEN",
-    "code": "123456"
-  }'
-
-# 4. Use JWT for authenticated API calls
-curl -X POST https://your-api-domain.com/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  -d '{
-    "messages": [{"role": "user", "content": "Hello!"}],
-    "model_id": "gemini-2.5-flash",
-    "max_tokens": 150
-  }'
+  --filter-pattern "Verification code for your-email@example.com"
 ```
 
-**📧 CloudWatch Log Access:**
-```bash
-# View recent verification codes (development)
-aws logs filter-log-events \
-  --log-group-name "/aws/lambda/chatbot-api-dev-create-auth" \
-  --start-time $(date -d '10 minutes ago' +%s)000
-
-# Or view in AWS Console: CloudWatch → Log Groups → /aws/lambda/chatbot-api-dev-create-auth
-```
-
-**Note**: Full authentication testing requires both backend API and frontend application running, as OAuth callbacks are handled by the frontend at `localhost:3000` (dev) or your production domain (prod).
-
-
-
-## Deployment Architecture
-
-The application deploys as a serverless architecture on AWS with full dev/prod environment separation:
-
-**Infrastructure Components:**
-- **AWS Lambda**: FastAPI application with Mangum adapter (Docker container deployment)
-- **Amazon ECR**: Container registry for Docker images with automatic lifecycle management
-- **API Gateway**: HTTP API with Cognito JWT authorization
-- **Cognito User Pools**: OAuth authentication with multiple providers
-- **CloudFront**: Global CDN for edge caching and performance
-- **S3**: Static asset storage with secure access
-- **Secrets Manager**: Encrypted secrets with automatic rotation support
-- **CloudWatch**: Monitoring, logging, and alerting
-
-**Environment Separation:**
-- **Resources**: Each environment gets isolated Lambda functions, S3 buckets, Cognito pools
-- **Naming**: All resources include environment suffix (e.g., `chatbot-api-dev-lambda`, `chatbot-api-prod-lambda`)
-- **Configuration**: Environment-specific Secrets Manager paths (`chatbot-api/dev/`, `chatbot-api/prod/`)
-- **Security**: Dev allows localhost CORS, prod restricts to production domains
-- **OAuth**: Dev uses `localhost:3000` callbacks, prod uses your production domain
-
-## Project Status
-
-**✅ PRODUCTION READY** - Fully functional serverless API with enterprise authentication, global deployment, and CI/CD pipeline.
-
-### Completed Features
-- ✅ Google Gemini model adapter (2.5 Pro and 2.5 Flash) - ENABLED
-- ✅ Multi-provider model adapters (OpenAI, vLLM, compatible APIs) - Available but disabled
-- ✅ AWS Cognito authentication with OAuth providers
-- ✅ Serverless AWS Lambda deployment with Docker containers via CDK
-- ✅ Global edge caching via CloudFront
-- ✅ Secure secrets management via Secrets Manager
-- ✅ Automated CI/CD with GitHub Actions
-- ✅ Health monitoring and structured logging
-
-### Next Steps
-- 🔄 **Phase 6**: DynamoDB integration for persistent user storage
-- ✅ **Phase 7**: Google Gemini models (COMPLETED) - Anthropic adapter implementation still needed
-- 🔄 **Phase 8**: Enhanced analytics and usage tracking
