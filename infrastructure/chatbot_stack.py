@@ -134,28 +134,10 @@ class ChatbotStack(Stack):
             "DefineAuthChallenge",
             function_name=f"chatbot-api-{self.deploy_environment}-define-auth",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="index.handler",
-            code=lambda_.Code.from_inline("""
-import json
-
-def handler(event, context):
-    print(f"DefineAuthChallenge event: {json.dumps(event)}")
-
-    # Check if we already have a successful challenge
-    if event['request']['session'] and len(event['request']['session']) > 0:
-        for session in event['request']['session']:
-            if session.get('challengeName') == 'CUSTOM_CHALLENGE' and session.get('challengeResult') == True:
-                event['response']['issueTokens'] = True
-                event['response']['failAuthentication'] = False
-                return event
-
-    # Start custom challenge for passwordless auth
-    event['response']['challengeName'] = 'CUSTOM_CHALLENGE'
-    event['response']['issueTokens'] = False
-    event['response']['failAuthentication'] = False
-
-    return event
-"""),
+            handler="define_auth.handler",
+            code=lambda_.Code.from_asset(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "lambdas", "auth")
+            ),
             timeout=cdk.Duration.minutes(1),
         )
 
@@ -166,59 +148,10 @@ def handler(event, context):
             "CreateAuthChallenge",
             function_name=f"chatbot-api-{self.deploy_environment}-create-auth",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="index.handler",
-            code=lambda_.Code.from_inline("""
-import json
-import boto3
-import random
-import string
-from datetime import datetime, timedelta
-
-def handler(event, context):
-    print(f"CreateAuthChallenge event: {json.dumps(event)}")
-
-    if event['request']['challengeName'] == 'CUSTOM_CHALLENGE':
-        # Generate 6-digit code
-        code = ''.join(random.choices(string.digits, k=6))
-
-        # Store code in private challenge parameters
-        event['response']['privateChallengeParameters'] = {
-            'code': code,
-            'email': event['request']['userAttributes']['email']
-        }
-
-        # Send code in public challenge parameters (for client)
-        event['response']['publicChallengeParameters'] = {
-            'trigger': 'true',
-            'email': event['request']['userAttributes']['email']
-        }
-
-        # Send email with code (using SES)
-        try:
-            ses = boto3.client('ses', region_name='us-east-1')
-            # Use a default email - you'll need to verify this in SES
-            from_email = os.environ.get('SES_FROM_EMAIL', 'noreply@chatbot-api.com')
-
-            ses.send_email(
-                Source=from_email,
-                Destination={'ToAddresses': [event['request']['userAttributes']['email']]},
-                Message={
-                    'Subject': {'Data': 'Your Chatbot API Verification Code'},
-                    'Body': {
-                        'Text': {'Data': f'Your verification code is: {code}' + '\\n\\nThis code will expire in 5 minutes.'},
-                        'Html': {'Data': f'<h2>Your verification code is: <strong>{code}</strong></h2><p>This code will expire in 5 minutes.</p>'}
-                    }
-                }
-            )
-        except Exception as e:
-            print(f"Failed to send email: {e}")
-            # For now, just log the code for testing
-            print(f"Verification code for {event['request']['userAttributes']['email']}: {code}")
-
-        event['response']['challengeMetadata'] = 'EMAIL_CHALLENGE'
-
-    return event
-"""),
+            handler="create_auth.handler",
+            code=lambda_.Code.from_asset(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "lambdas", "auth")
+            ),
             timeout=cdk.Duration.minutes(1),
         )
 
@@ -240,24 +173,10 @@ def handler(event, context):
             "VerifyAuthChallenge",
             function_name=f"chatbot-api-{self.deploy_environment}-verify-auth",
             runtime=lambda_.Runtime.PYTHON_3_11,
-            handler="index.handler",
-            code=lambda_.Code.from_inline("""
-import json
-
-def handler(event, context):
-    print(f"VerifyAuthChallenge event: {json.dumps(event)}")
-
-    # Get the code from private challenge parameters
-    expected_code = event['request']['privateChallengeParameters'].get('code', '')
-    provided_code = event['request']['challengeAnswer']
-
-    print(f"Expected: {expected_code}, Provided: {provided_code}")
-
-    # Verify the code
-    event['response']['answerCorrect'] = (expected_code == provided_code)
-
-    return event
-"""),
+            handler="verify_auth.handler",
+            code=lambda_.Code.from_asset(
+                os.path.join(os.path.dirname(os.path.dirname(__file__)), "lambdas", "auth")
+            ),
             timeout=cdk.Duration.minutes(1),
         )
 

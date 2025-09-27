@@ -1,0 +1,3 @@
+# Minimal dependencies for auth Lambda functions
+# boto3 is already available in Lambda runtime, but listing for clarity
+boto3>=1.26.0
