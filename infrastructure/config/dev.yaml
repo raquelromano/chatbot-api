@@ -6,3 +6,5 @@ cors:
   allowed_origins:
     - "http://localhost:3000"
     - "http://localhost:8000"
+auth:
+  enable_auth: true

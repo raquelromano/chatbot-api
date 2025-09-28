@@ -5,3 +5,5 @@ cors:
   # Replace with URLs where your frontend is hosted (e.g., Netlify, Vercel, custom domain)
   allowed_origins:
     - "https://your-domain.com"
+auth:
+  enable_auth: true

@@ -340,8 +340,10 @@ class ChatbotStack(Stack):
                 "COGNITO_USER_POOL_ID": self.user_pool.user_pool_id,
                 "COGNITO_CLIENT_ID": self.user_pool_client_id,
                 "COGNITO_REGION": self.region,
+                "AWS_ACCOUNT_ID": Stack.of(self).account,
                 "ENVIRONMENT": self.deploy_environment,
                 "SES_FROM_EMAIL": self._get_ses_from_email(),
+                "ENABLE_AUTH": str(self._get_enable_auth()).lower(),
             },
             log_group=log_group,
         )
@@ -482,6 +484,10 @@ class ChatbotStack(Stack):
     def _get_ses_from_email(self) -> str:
         """Get environment-specific SES from email address."""
         return self.config["email"]["ses_from_email"]
+
+    def _get_enable_auth(self) -> bool:
+        """Get environment-specific auth enablement setting."""
+        return self.config["auth"]["enable_auth"]
 
     def _create_outputs(self) -> None:
         """Create CloudFormation outputs."""
